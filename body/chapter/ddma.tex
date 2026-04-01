@@ -1,0 +1,709 @@
+\chapter{离散相移DMA波束赋形性能分析与角域分划算法}\label{ch:ddma}
+
+
+\section{引言}
+
+\textcolor{red}{之后再写}
+
+\section{系统模型}
+
+本章继续研究基于DMA架构的下行链路单用户通信系统。基站天线阵列架构与第~\ref{sec:cdma_system_model}节保持一致，即包含$N_d$条平行微带波导，每条波导集成$N_e$个超材料辐射单元，共$N=N_d \times N_e$个单元。基站发射信号经数字预编码$\bm w$和DMA配置矩阵$\bm Q$处理后，通过信道$\bm g$传输至单天线用户。如图~\ref{fig:ddma_system}所示，与上一章假设相位连续可调的理想情况不同，本章将重点考察受硬件限制的实际应用场景，对DMA的相位离散特性及信道模型进行重新建模。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.7\linewidth]{ddma/ddma_system.pdf}
+	\caption{离散相移DMA结构示意图}
+	\label{fig:ddma_system}
+\end{figure}
+
+在实际的DMA硬件实现中，辐射单元的频率响应通常是通过加载变容二极管或PIN二极管等可调谐元件来控制的。
+虽然变容二极管理论上支持连续调谐，但受限于数模转换器的精度，实际能够实现的相位状态是有限的。更常见的情况是采用PIN二极管，其仅具有“导通”和“截止”两种状态，只能提供低分辨率的相位控制。
+图~\ref{fig:ddma_discrete_phase}展示了DMA在实际应用中面临的三种典型的离散相移特性：第一种为理想的均匀量化情形，其相位状态在$[0, 2\pi)$周期内均匀分布，常见于高精度数字控制的场景；第二种为非均匀离散相移情形，由于阵列面板制造公差或工作温度波动等原因，导致实际相位偏离均匀分布，呈现非均匀特性；第三种为移相能力受限情形，主要原因是受超材料单元极化率的谐振频率调控范围的物理限制，导致单元的调相范围无法覆盖完整的洛伦兹圆，只能在一定的角度范围内进行调节。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.8\linewidth]{ddma/ddma_discrete_phase.pdf}
+	\caption{DMA实际相移特性的几种情况}
+	\label{fig:ddma_discrete_phase}
+\end{figure}
+
+为了能够通用地分析上述各种离散特性，本章不再使用连续相位集合，而是将第$i$条波导上第$l$个单元的相位$\phi_{i,l}$建模为从一个有限的任意离散集合$\Phi_M$中取值：
+\begin{equation}\label{eq:ddma_discrete_set}
+	\phi_{i,l} \in \bm \Phi_M = \{\Phi_1, \Phi_2, \cdots, \Phi_M\}, \quad \forall i, l,
+\end{equation}
+其中$M$表示可取的相位状态数量。不失一般性，假设离散相位值满足如下关系：
+\begin{equation}
+	0 \le \Phi_1 < \Phi_2 < \cdots < \Phi_M < 2\pi.
+\end{equation}
+在此基础上，定义移相能力$C=\Phi_M-\Phi_1$，对于移相能力受限的情形，满足$C<\frac{2\pi(M-1)}{M}$，这意味着此时$M$个离散相位点无法在$[0, 2\pi)$周期内实现均匀分布。
+相应地，DMA单元的权重系数仍满足式~\eqref{eq:cdma_qil}的洛伦兹形式耦合关系，但相位受到式~\eqref{eq:ddma_discrete_set}的严格约束。
+
+在上一章中，研究假设了瑞利衰落信道。然而，DMA通常应用于视距分量较强的场景，且由于DMA与用户之间的距离远大于DMA自身的物理尺寸，各单元到用户的路径损耗可近似认为相同。
+因此，本章采用莱斯衰落模型来描述DMA阵列与用户之间的信道$\bm g \in \mathbb{C}^{N \times 1}$：
+\begin{equation}\label{eq:ddma_rician_channel}
+	\bm g = \sqrt{\rho} \left( \sqrt{\frac{\kappa}{\kappa+1}}\bar{\bm g} + \sqrt{\frac{1}{\kappa+1}}\tilde{\bm g} \right),
+\end{equation}
+其中，$\rho$表示距离相关的路径损耗；$\kappa$为莱斯因子，表征视距分量与非视距分量的功率比；$\bar{\bm g}$和$\tilde{\bm g}$分别表示确定的视距分量和随机的非视距散射分量。
+
+基于上述模型，为了最大化用户端的接收信噪比，需对DMA的权重矩阵$\bm Q$进行优化。最优的数字预编码向量$\bm w$仍然采用最大比传输策略获得，此时的离散优化问题为：
+\begin{equation}\label{eq:ddma_pQ}
+	\max_{\bm{Q}} \quad  p(\bm{Q})=\|\bm{g}^\mathrm{T} \bm{HQ}\|^2,
+	\quad \text{s.t.} \quad  \eqref{eq:cdma_Q}, \;
+	\eqref{eq:ddma_discrete_set}.
+\end{equation}
+该优化问题属于典型的非凸整数非线性规划问题。若采用穷举法寻找全局最优解，搜索空间高达$\mathcal{O}(M^{N_d N_e})$，对于大规模DMA阵列而言，指数级增长的计算复杂度在实际中不可行。
+为了在性能与计算复杂度之间取得平衡，下文将提出一种基于最近点投影的低复杂度次优算法。
+
+\section{最近点投影算法与离散性能分析}
+
+本节首先针对任意离散相移场景介绍最近点投影算法，随后，基于前述信道模型推导系统平均信噪比的闭式解，并以此为基础全面分析DMA离散相移分布特性对系统性能的影响。
+
+\subsection{任意离散相移的最近点投影算法}
+
+针对离散相移约束，一种直观且高效的求解思路是首先忽略离散约束，获取连续相移条件下的最优解（如第\ref{ch:cdma}章定理~\ref{the:cdma_Qstar}所述），随后，在离散相位集合$\bm \Phi_M$中寻找与连续最优解相位差最小的离散点作为最终解。
+这种方法的理论依据在于，随着离散相移选择$M$的数量增加，离散问题的解空间将逐渐逼近连续情形\cite{you2020channel, wang2021dynamic, abeywickrama2020intelligent}。
+具体来说，对于连续最优相位$\phi_{i,l}^\star$，其对应的离散解$\phi_{i,l}^{\text{CPP}}$可通过下式获得：
+\begin{equation}
+	\phi_{i,l}^{\text{CPP}} = \mathop{\arg\max}_{\phi \in \bm \Phi_M} \cos(\phi_{i,l}^\star-\phi).
+\end{equation}
+
+尽管CPP算法获得的解$\bm Q^{\text{CPP}}$可能不是优化问题~\eqref{eq:ddma_pQ}的全局最优解，但该方法避免了处理非凸约束所需的复杂迭代过程。
+在计算复杂度方面，CPP算法仅需对每个单元的连续最优相位在$M$个离散值中进行一次最近邻搜索，其总计算复杂度降低为$\mathcal{O}(MN_dN_e)$。
+该算法的具体执行步骤总结于算法~\ref{alg:ddma_cpp}中。
+
+\begin{algorithm}[!t]
+	\caption{离散相移最近点投影算法（CPP）}
+	\label{alg:ddma_cpp}
+	\begin{algorithmic}[1]
+		\REQUIRE 信道向量$\bm g$，波导传输矩阵$\bm H$，波导数$N_d$，单元数$N_e$，量化相移数$M$，离散相位集$\bm \Phi_M$。
+		\ENSURE 离散相移DMA配置矩阵$\bm Q^{\text{CPP}}$。
+		\STATE 初始化配置矩阵 $\bm Q^{\text{CPP}}=\bm 0_{N\times N_d}$；
+		\FOR {$i=1,2,\cdots, N_d$}
+		\FOR {$l=1,2,\cdots, N_e$}
+		\STATE 根据第\ref{ch:cdma}章定理~\ref{the:cdma_Qstar}计算连续最优相位 $\phi_{i,l}^\star$；
+		\FOR {$m=1,2,\cdots, M$}
+		\STATE 计算投影相关系数 $A_m=\cos(\phi_{i,l}^\star-\Phi_m)$；
+		\ENDFOR
+		\STATE 选取相关系数最大的索引 $m^\star=\mathop{\arg\max}\limits_{1\leq m \leq M} (A_m)$；
+		\STATE 确定离散相位 $\hat{\phi}_{i,l}\leftarrow\Phi_{m^\star}$，更新配置矩阵 $[\bm Q^{\text{CPP}}]_{(i-1)N_e+l, i} = (j+e^{j \phi_{i,l}^{\text{CPP}}})/2$；
+		\ENDFOR
+		\ENDFOR
+		\RETURN $\bm Q^{\text{CPP}}$。
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{任意离散相移下的平均信噪比分析}
+
+本小节将推导任意离散相移约束下，采用CPP算法时DMA系统的平均信噪比闭式解。根据式~\eqref{eq:cdma_gamma}定义的平均信噪比，代入式~\eqref{eq:ddma_rician_channel}中的莱斯衰落信道模型，并应用CPP算法得到的离散权重系数$\bm Q^{\text{CPP}}$，由于所有波导具有相同的统计特性，平均信噪比 $\gamma^{\text{CPP}}$ 可展开为：
+\begin{equation}\label{eq:ddma_gamma_expand}
+	\gamma^{\text{CPP}} = \frac{P_t \rho N_d}{\sigma^2} \left( \frac{\kappa}{\kappa+1} \mathbb{E}_{\text{LoS}} + \frac{1}{\kappa+1} \mathbb{E}_{\text{NLoS}} \right),
+\end{equation}
+其中 $\mathbb{E}_{\text{LoS}}$ 和 $\mathbb{E}_{\text{NLoS}}$ 分别表示第$i$条波导的视距分量和非视距分量对应的归一化期望增益：
+\begin{equation}
+	\mathbb{E}_{\text{LoS}} = \mathbb{E}\left(\left| \sum_{l=1}^{N_{e}} \bar{g}_{i,l} h_{i, l} q_{i,l}^{\text{CPP}}\right|^{2}\right), 
+	\quad
+	\mathbb{E}_{\text{NLoS}} = \mathbb{E}\left(\left| \sum_{l=1}^{N_{e}} \tilde{g}_{l} h_{i, l} q_{i,l}^{\text{CPP}}\right|^{2}\right).
+\end{equation}
+
+首先分析视距分量$\mathbb{E}_{\text{LoS}}$。定义CPP算法引入的量化相位误差为 $\varphi_{i,l} = \phi_{i,l}^{\text{CPP}} - \phi_{i,l}^\star$。
+将 $q_{i,l}^{\text{CPP}} = (j+e^{j(\phi_{i,l}^\star + \varphi_{i,l})})/2$ 以及连续最优相位 $\phi_{i,l}^\star$ 的表达式代入，并利用 $\bar{g}_{i,l}$ 的单位模性质，$\mathbb{E}_{\text{LoS}}$ 可化简为：
+\begin{equation}\label{eq:ddma_ELoS_def}
+	\mathbb{E}_{\text{LoS}} = \frac{1}{4} \mathbb{E}\left( \left| |\Lambda_i| + \sum_{l=1}^{N_e} |\bar{g}_{i,l} h_{i,l}| e^{j\varphi_{i,l}} \right|^2 \right),
+\end{equation}
+其中 $\Lambda_i = j \sum_{l=1}^{N_{e}} \bar{g}_{i,l} h_{i,l}$ 为与量化误差无关的常数项。对模平方进行展开，得到如下三项之和：
+\begin{equation}\label{eq:ddma_ELoS_terms}
+	\medmath{
+		\mathbb{E}_{\text{LoS}} = \frac{1}{4} \mathbb{E}
+		\bigg( \underbrace{|\Lambda_i|^2 + \sum_{l=1}^{N_e} |\bar{g}_{i,l} h_{i,l}|^2}_{A_1} + \underbrace{2|\Lambda_i| \sum_{l=1}^{N_e} |\bar{g}_{i,l} h_{i,l}| \cos \varphi_{i,l}}_{A_2} + \underbrace{\sum_{l \ne \lambda} |\bar{g}_{i,l} h_{i,l}| |\bar{g}_{i,\lambda} h_{i,\lambda}| e^{j(\varphi_{i,l} - \varphi_{i,\lambda})}}_{A_3} \bigg).
+	}
+\end{equation}
+
+下面逐项计算 $A_1, A_2, A_3$ 的期望值。
+首先将$\mathbb{E}(A_1)$表达为自相关项与互相关项之和：
+\begin{equation}\label{eq:ddma_EA1_expand}
+	\mathbb{E}(A_1) = \mathbb{E}\left( 2\sum_{l=1}^{N_e} |\bar{g}_{i,l} h_{i,l}|^2 + \sum_{l=1}^{N_e} \sum_{\substack{\lambda=1 \ \lambda \neq l}}^{N_e} \bar{g}_{i,l} h_{i,l} \bar{g}_{i,\lambda}^* h_{i,\lambda}^* \right).
+\end{equation}
+由于视距分量 $\bar{g}_{i,l}$ 具有单位模，且假设其相位在 $[0, 2\pi)$ 内服从独立均匀分布 ，则交叉项的期望满足：
+\begin{equation}
+	\mathbb{E}(\bar{g}_{i,l} h_{i,l} \bar{g}_{i,\lambda}^* h_{i,\lambda}^*) =
+	\begin{cases}
+		|h_{i,l}|^2, & \text{若}\; l=\lambda, \\
+		0, & \text{否则}.
+	\end{cases}
+\end{equation}
+因此，式~\eqref{eq:ddma_EA1_expand}中的第二项求和结果为零。结合波导衰减模型 $|h_{i,l}| = e^{-\alpha D(l-1)}/\sqrt{N_e}$，可得：
+\begin{equation}
+	\mathbb{E}(A_1) = 2 \sum_{l=1}^{N_e} |h_{i,l}|^2 = \frac{2}{N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}.
+\end{equation}
+
+对于项 $A_2$，当单元数量 $N_e > 2$ 时，可以合理假设 $\Lambda_i$、信道项$\bar{g}_{i,l} h_{i,l}$与量化误差 $\varphi_{i,l}$ 之间相互独立。
+当$N_e$较大时，根据中心极限定理，$\Lambda_i$近似服从循环对称复高斯分布，相应地，其模值$|\Lambda_i|$近似服从瑞利分布，其均值为：
+\begin{equation}
+	\mathbb{E}(|\Lambda_i|) = \frac{\sqrt{\pi}}{2} \sqrt{\sum_{l=1}^{N_e} |h_{i,l}|^2} = \frac{\sqrt{\pi}}{2\sqrt{N_e}} \sqrt{\frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}}.
+\end{equation}
+将上述期望代入 $A_2$ 的定义式，其期望取决于量化误差的余弦期望 $\mathbb{E}(\cos \varphi_{i,l})$，即：
+\begin{equation}
+	\mathbb{E}(A_2) = \frac{\sqrt{\pi}}{N_e} \sqrt{\frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}} \frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}} \mathbb{E}(\cos \varphi_{i,l}).
+\end{equation}
+
+最后计算项$A_3$的期望，由于不同单元的量化误差 $\varphi_{i,l}$ 和 $\varphi_{i,\lambda}$ 相互独立，且 $\mathbb{E}(e^{j\varphi_{i,l}}) = \mathbb{E}(\cos \varphi_{i,l})$，有：
+\begin{equation}
+	\mathbb{E}(A_3) = \frac{1}{N_e} \left[ \left(\frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}}\right)^2 - \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}} \right]\cdot [\mathbb{E}(\cos \varphi_{i,l})]^2.
+\end{equation}
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.4\linewidth]{ddma/ddma_cos.pdf}
+	\caption{CPP算法的相位量化区间与决策边界}
+	\label{fig:ddma_cos}
+\end{figure}
+
+上述推导中的关键在于量化误差的统计特性。
+如图~\ref{fig:ddma_cos}所示，在洛伦兹圆上对量化误差进行分区讨论。
+由于连续最优相位 $\phi_{i,l}^\star$ 在 $[0, 2\pi)$ 上均匀分布，其概率密度函数为 $f(\phi) = \frac{1}{2\pi}$。
+图中蓝色实心点表示离散相位集合 $\bm \Phi_M$，橙色虚线表示相邻离散相位之间的决策边界 $\Theta_m$。
+根据最近点投影原则，决策边界位于相邻两点的角平分线上，即：$\Theta_m=\frac{\Phi_m+\Phi_{m+1}}{2}$。
+对于最终量化为$\Phi_m$的连续解而言，其量化误差在$[\Theta_{m-1}-\Phi_m,\Theta_{m}-\Phi_m]$上均匀分布。
+为了计算全周期的期望值 $\mathbb{E}(\cos \varphi_{i,l})$，将整个 $[0, 2\pi)$ 积分域分解为 $M$ 个这样的子区间之和，有：
+\begin{align}
+	\mathbb{E}(\cos \varphi_{i,l}) 
+	&= \int_{0}^{2\pi} \frac{1}{2\pi}\cos(\phi^{\text{CPP}} - \phi) \, \mathrm{d}\phi \\
+	&= \sum_{m=1}^M \left( \int_{-\frac{\Phi_{m}-\Phi_{m-1}}{2}}^{\frac{\Phi_{m+1}-\Phi_m}{2}} \frac{1}{2\pi} \cos \varphi \, \mathrm{d}\varphi \right) \\
+	&= \frac{1}{2\pi} \sum_{m=1}^M
+	\left( \sin\left(\frac{\Phi_{m+1}-\Phi_m}{2}\right)
+	+ \sin\left(\frac{\Phi_{m}-\Phi_{m-1}}{2}\right)
+	\right) \\
+	&= \frac{1}{\pi} \sum_{m=1}^M \sin \frac{\Phi_{m+1}-\Phi_m}{2},\label{eq:ddma_E_cos_phi}
+\end{align}
+其中约定 $\Phi_{M+1} = \Phi_1 + 2\pi$ 以处理循环边界条件。
+
+类似地，对于非视距分量，由于信道 $\tilde{g}_{i,l}$ 的随机性占主导，离散相位的具体取值对平均功率的影响被平均化，可推导得：
+\begin{equation}
+	\mathbb{E}_{\text{NLoS}} = \frac{1}{2N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}.
+\end{equation}
+综合上述各项结果，并代入式~\eqref{eq:ddma_gamma_expand}，得到如下定理。
+
+\begin{theorem}\label{the:ddma_gamma_cpp}
+	假设DMA阵列与用户间服从莱斯衰落信道，且每个单元的相位受限于任意离散集合 $\bm \Phi_M$。采用CPP算法时，系统的平均信噪比 $\gamma^{\text{CPP}}$ 为：
+	\begin{equation}\label{eq:ddma_gamma_cpp_closed}
+		\gamma^{\text{CPP}} = \frac{P_t \rho N_d}{4\sigma^2 N_e} \left( 2a_2 + \frac{\kappa}{\kappa+1} \left[ \sqrt{\frac{a_2 a_1^2}{\pi}} \sum_{m=1}^M \sin \frac{\delta_m}{2} + \frac{a_1^2 - a_2}{\pi^2} \left( \sum_{m=1}^M \sin \frac{\delta_m}{2} \right)^2 \right] \right),
+	\end{equation}
+	其中 $\delta_m = \Phi_{m+1}-\Phi_m$（约定 $\Phi_{M+1} = \Phi_1 + 2\pi$），$a_1 = \frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}}$，$a_2 = \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}$ 为波导衰减相关系数。
+\end{theorem}
+
+定理~\ref{the:ddma_gamma_cpp}揭示了离散相移DMA系统性能的解析规律。相比于连续相移情形，离散约束带来的性能损失由因子$\mathcal{S}=\sum_{m=1}^M \sin \frac{\delta_m}{2}$刻画。显然，在不同的离散相位集合 $\bm \Phi_M$下，系统性能会有所差异。为了指导实际DMA系统的量化设计，有必要深入探究相位分布与系统性能之间的内在联系，寻找最优的相位量化策略。
+
+\subsection{离散相位分布对系统性能的影响分析}
+
+本小节将基于定理~\ref{the:ddma_gamma_cpp}中的结论，进一步分析离散相位的分布特性对系统平均信噪比的影响。首先考虑非均匀离散相移的一般情形，分析随机相位分布下的平均性能基准；随后，通过数学推导寻找使得系统性能最大化的最优相位分布策略。
+
+在某些低成本或受制造工艺限制的场景中，DMA单元的离散相位可能呈现非均匀分布的特性。例如，变容二极管的偏置电压漂移或超材料单元的物理尺寸公差，都可能导致实际相位偏离预设值。为了评估此类非理想特性下的系统性能基准，假设离散相位集合 $\bm \Phi_M = \{\Phi_1, \Phi_2, \cdots, \Phi_M\}$ 为在 $[0, 2\pi)$ 周期内独立同分布的均匀随机变量。
+在此假设下，相邻相位之间的间隔$\delta_1,\delta_2,\cdots,\delta_M$的统计特性是完全相同的，考虑任意相邻两点间的间隔 $\delta$，由几何概型容易得出：
+\begin{equation}
+	\operatorname{Pr}(\delta < x) = 1-\left( 1 - \frac{x}{2\pi} \right)^{M-1}.
+\end{equation}
+求导得到间隔$\delta$的概率密度函数：
+\begin{equation}
+	f_\delta(x) = \frac{d}{dx} \operatorname{Pr}(\delta < x) = \frac{M-1}{2\pi} \left( 1 - \frac{x}{2\pi} \right)^{M-2}, \quad 0 \le x \le 2\pi.
+\end{equation}
+
+基于对称性，$\mathcal{S}$ 中每一项的期望值相等。因此，$\mathcal{S}$ 的统计平均值可表示为单个间隔正弦值的期望的 $M$ 倍：
+\begin{align}
+	\mathbb{E}[\mathcal{S}_{\text{rand}}] 
+	&= M \int_0^{2\pi} \sin\left(\frac{x}{2}\right) f_\delta(x) \, \mathrm{d}x \nonumber \\
+	&= M(M-1) \int_0^{2\pi} \sin\left(\frac{x}{2}\right) \frac{1}{2\pi} \left(1-\frac{x}{2\pi}\right)^{M-2} \, \mathrm{d}x.
+\end{align}
+为简化积分计算，进行变量代换，令 $u = 1 - \frac{x}{2\pi}$，代入上式整理得：
+\begin{equation}\label{eq:ddma_random_phase_expect}
+	\mathbb{E}[\mathcal{S}_{\text{rand}}] = M(M-1) \int_0^1 u^{M-2} \sin(\pi - \pi u) \, \mathrm{d}u = M(M-1) \int_0^1 u^{M-2} \sin(\pi u) \, \mathrm{d}u.
+\end{equation}
+
+令 $n = M-2$，记上式中的定积分为 $I_n = \int_0^1 u^n \sin(\pi u) \, \mathrm{d}u$。为了求解该积分，采用分部积分法。首先令 $U=u^n, \mathrm{d}V=\sin(\pi u)\mathrm{d}u$，有：
+\begin{equation}
+	I_n = \left[ -\frac{u^n}{\pi}\cos(\pi u) \right]_0^1 + \frac{n}{\pi} \int_0^1 u^{n-1} \cos(\pi u) \, \mathrm{d}u = \frac{1}{\pi} + \frac{n}{\pi} \int_0^1 u^{n-1} \cos(\pi u) \, \mathrm{d}u.
+\end{equation}
+对右端的剩余积分项再次使用分部积分法，令 $U=u^{n-1}, \mathrm{d}V=\cos(\pi u)\mathrm{d}u$，可得：
+\begin{equation}
+	\int_0^1 u^{n-1} \cos(\pi u) \, \mathrm{d}u = \left[ \frac{u^{n-1}}{\pi}\sin(\pi u) \right]_0^1 - \frac{n-1}{\pi} \int_0^1 u^{n-2} \sin(\pi u) \, \mathrm{d}u = - \frac{n-1}{\pi} I_{n-2}.
+\end{equation}
+将此结果代回前式，可以建立如下关于 $I_n$ 的二阶递推关系：
+\begin{equation}\label{eq:ddma_In_recursion}
+	I_n = \frac{1}{\pi} - \frac{n(n-1)}{\pi^2} I_{n-2}.
+\end{equation}
+
+
+利用式~\eqref{eq:ddma_In_recursion}反复迭代展开，可以将 $I_n$ 表示为有限项级数求和的形式。考虑到 $n=M-2$ 的奇偶性取决于 $M$：
+\begin{itemize}
+	\item 当 $M$ 为奇数时，$n$ 为奇数，递推最终终止于 $I_1 = 1/\pi$；
+	\item 当 $M$ 为偶数时，$n$ 为偶数，递推最终终止于 $I_0 = 2/\pi$。
+\end{itemize}
+通过归纳法整理通项公式，并代入式~\eqref{eq:ddma_random_phase_expect}，得到随机相位分布下相位性能因子的期望为：
+\begin{equation}\label{eq:ddma_ESrandom_closed_floor}
+	\mathbb{E}[\mathcal{S}_{\text{rand}}] = \sum_{k=0}^{\lfloor \frac{M-3}{2} \rfloor} \frac{(-1)^k M!}{(M-2-2k)! \pi^{2k+1}} + \frac{1+(-1)^M}{2} \left[ (-1)^{\frac{M-2}{2}} \frac{2 \cdot M!}{\pi^{M-1}} \right].
+\end{equation}
+
+式~\eqref{eq:ddma_ESrandom_closed_floor}表征了在相位配置完全随机、缺乏任何优化设计时的系统平均性能，构成了DMA系统性能的下界基准。
+为了获得最佳的波束赋形增益，需要优化相位集合 $\bm \Phi_M$ 的分布，以最大化因子 $\mathcal{S}$。该优化问题可表述为在间隔之和满足一定的约束条件下，寻找最优的间隔序列 $\{\delta_m\}$：
+\begin{align}\label{eq:ddma_opt_phase_question}
+	\max_{\{\delta_m\}} \quad & \mathcal{S} = \sum_{m=1}^M \sin \frac{\delta_m}{2}, \\ 
+	\text{s.t.} \quad & \sum_{m=1}^M \delta_m = 2\pi, \quad
+	\sum_{m=1}^{M-1} \delta_m\le C, \quad
+	\delta_m > 0, \; \forall m,
+\end{align}
+其中，约束条件 $\sum_{m=1}^{M-1} \delta_m \le C$ 引入了对DMA单元移相能力的限制，$C$ 表示硬件所能提供的最大相位动态范围。下面的定理给出了在任意移相能力约束下，使得系统性能最大化的最优相位分布策略及相应的相位性能因子。
+
+\begin{theorem}\label{the:ddma_opt_phase}
+	在移相能力 $C$ 的约束下，最优离散相位分布策略及其对应的相位性能因子 $\mathcal{S}^\star$ 取决于 $C$ 是否满足临界阈值 $C_{\text{th}} = \frac{2\pi(M-1)}{M}$：
+	\begin{itemize}
+		\item 若 $C \ge C_{\text{th}}$，最优策略为全周期均匀分布。
+		此时，相邻相位间隔 $\delta_m^\star$ 及最大相位性能因子 $\mathcal{S}^\star$ 为：
+		\begin{equation}\label{eq:ddma_case_sufficient}
+			\delta_1^\star = \cdots =\delta_M^\star = \frac{2\pi}{M}, \quad 
+			\mathcal{S}^\star = M \sin \frac{\pi}{M}.
+		\end{equation}
+		
+		\item 若 $C < C_{\text{th}}$，最优策略为在 $[0, C]$ 范围内的局部均匀分布。
+		此时，最优间隔及最大相位性能因子为：
+		\begin{equation}\label{eq:ddma_case_limited}
+			\begin{cases}
+				\delta_1^\star = \cdots =\delta_{M-1}^\star = \frac{C}{M-1}, \quad \delta_M^\star = 2\pi - C, \\
+				\mathcal{S}^\star = (M-1) \sin \left( \frac{C}{2(M-1)} \right) + \sin \left( \pi - \frac{C}{2} \right).
+			\end{cases}
+		\end{equation}
+	\end{itemize}
+\end{theorem}
+
+\begin{proof}
+	目标是最大化相位性能因子 $\mathcal{S} = \sum_{m=1}^M \sin(\delta_m/2)$。首先假设回环间隔 $\delta_M$ 固定，则其余 $M-1$ 个间隔之和固定为 $2\pi - \delta_M$。
+	对于函数 $f(x) = \sin(x/2)$，其二阶导数 $f''(x) = -\frac{1}{4}\sin(x/2)$ 在区间 $(0, 2\pi)$ 上恒小于零，故 $f(x)$ 为严格凹函数。
+	根据琴生不等式，对于凹函数 $f(x)$，在自变量之和固定的约束下，当且仅当所有自变量相等时，函数值之和取得最大值。
+	因此，对于任意给定的 $\delta_M$，要使得目标函数 $\mathcal{S}$最大，前 $M-1$ 个间隔必须相等，即：
+	\begin{equation}
+		\delta_1 = \delta_2 = \cdots = \delta_{M-1} = \frac{2\pi - \delta_M}{M-1}.
+	\end{equation}
+	将上式代入目标函数$\mathcal{S}$，转化为关于$\delta_M$的单变量优化问题：
+	\begin{equation}
+		\mathcal{S}(\delta_M) = (M-1)\sin\left( \frac{2\pi - \delta_M}{2(M-1)} \right) + \sin\left( \frac{\delta_M}{2} \right).
+	\end{equation}
+	对 $\delta_M$ 求导，整理得：
+	\begin{equation}
+		\mathcal{S}'(\delta_M) = \frac{1}{2} \left[ \cos\left( \frac{\delta_M}{2} \right) - \cos\left( \frac{2\pi - \delta_M}{2(M-1)} \right) \right].
+	\end{equation}
+	
+	令 $\mathcal{S}'(\delta_M) = 0$，由余弦函数的单调性可知：
+	\begin{equation}
+		\frac{\delta_M}{2} = \frac{2\pi - \delta_M}{2(M-1)}\quad \Rightarrow \quad \delta_M = \frac{2\pi}{M}.
+	\end{equation}
+	进一步分析导数的符号，当 $\delta_M < \frac{2\pi}{M}$ 时，导数大于零，$\mathcal{S}(\delta_M)$ 在 $(0, 2\pi/M]$ 上单调递增；反之当 $\delta_M > \frac{2\pi}{M}$ 时，导数小于零，$\mathcal{S}(\delta_M)$在 $[2\pi/M, 2\pi)$ 上单调递减。因此，$\delta_M = 2\pi/M$ 为全局最大值点。接下来结合约束条件 $\delta_M \ge 2\pi - C$ 进行讨论：
+	\begin{enumerate}
+		\item 当 $C \ge \frac{2\pi(M-1)}{M}$ 时，可行域下界 $2\pi - C \le \frac{2\pi}{M}$，此时最优解取 $\delta_M^\star = \frac{2\pi}{M}$，所有间隔相等，代入目标函数即得$\mathcal{S}^\star = M \sin \frac{\pi}{M}$。
+		\item 当 $C < \frac{2\pi(M-1)}{M}$ 时，可行域下界$2\pi - C > \frac{2\pi}{M}$，此时可行域完全位于函数 $\mathcal{S}(\delta_M)$ 的单调递减区间内。因此，为最大化目标函数，$\delta_M$ 应取可行域的最小值，即 $\delta_M^\star = 2\pi - C$，此时其余间隔为 $\delta_m^\star = \frac{C}{M-1}$，代入目标函数得到式~\eqref{eq:ddma_case_limited}。
+	\end{enumerate}
+\end{proof}
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ddma/ddma_figSvsM.pdf}
+	\caption{相位性能因子$\mathcal{S}$随离散相移数量$M$的变化趋势}
+	\label{fig:ddma_figSvsM}
+\end{figure}
+
+为了直观展示离散相位分布对系统性能的影响，根据定理~\ref{the:ddma_opt_phase}的结论以及随机相位分布的推导结果，图~\ref{fig:ddma_figSvsM}展示了在不同移相能力$C$的约束下，相位性能因子 $\mathcal{S}$ 随离散相位状态数 $M$ 的变化趋势，并与随机相位分布进行了对比。
+从图中可以看出，在相同的量化精度下，均匀量化所获得的性能因子 $\mathcal{S}$ 优于随机相移，特别是当 $M$ 较小时，性能差异更加显著，这说明在低分辨率量化场景下有必要对相位分布进行设计。
+然而，不同移相能力$C$下的增长速率和性能上界存在明显差异。
+当移相能力充足时，$\mathcal{S}$随着$M$的增加逐渐逼近理论上界$\pi$。相反，当移相能力受限时，随着$M$增加，$\mathcal{S}$很快便达到饱和，收敛于一个小于$\pi$的值。
+这说明若DMA硬件的调谐范围受限，单纯增加相位控制位数并不能弥补相位覆盖范围不足带来的性能损失。
+
+由于全周期均匀量化是最通用且性能最优的方案，在此场景下，与第\ref{ch:cdma}章类似，将所提CPP算法与直接映射松弛下的量化方法进行对比。结合定理~\ref{the:ddma_gamma_cpp}、定理~\ref{the:ddma_opt_phase}与推论~\ref{cor:cdma_gamma_relax}，得到均匀量化下CPP算法与松弛方法的平均信噪比表达式：
+\begin{align}
+	\gamma^{\text{CPP}} &= \frac{P_t \rho N_d}{4\sigma^2 N_e} \left( 2a_2 + \frac{\kappa}{\kappa+1} \left[ M\sqrt{\frac{a_2 a_1^2}{\pi}} \sin \frac{\pi}{M} + \frac{M^2(a_1^2-a_2)}{\pi^2} \sin^2 \frac{\pi}{M} \right] \right), \label{eq:ddma_gamma_cpp_uni}\\
+	\gamma^{\text{RLX}} &= \frac{P_t \rho N_d}{4\sigma^2 N_e} \left( 2a_2 + \frac{\kappa}{\kappa+1} \left[ \frac{M^2(a_1^2-a_2)}{\pi^2} \sin^2 \frac{\pi}{M} \right] \right). \label{eq:ddma_gamma_rlx_uni}
+\end{align}
+对比式~\eqref{eq:ddma_gamma_cpp_uni}和式~\eqref{eq:ddma_gamma_rlx_uni}可见，CPP算法相比松弛算法多出了含 $M \sin(\pi/M)$ 的一阶项，这反映了CPP算法在处理离散约束时能够更有效地保留信号的相干叠加增益。
+尽管CPP算法展现出了优于传统松弛方法的性能，但其获得的解 $\bm Q^{\text{CPP}}$ 毕竟是基于连续解的直接投影，并非离散约束下的全局最优解。
+下述命题给出了在均匀量化的条件下，CPP算法的性能边界。
+
+\begin{proposition}\label{pro:ddma_cpp_bound}
+	令 $\bm Q^{\natural}$ 表示在均匀量化约束下优化问题~\eqref{eq:ddma_pQ}的全局最优解。CPP算法获得的解 $\bm Q^{\text{CPP}}$ 与全局最优解的性能比值满足如下界限：
+	\begin{equation}
+		\cos^2 \left(\frac{\pi}{M}\right) \le \frac{p(\bm Q^{\text{CPP}})}{p(\bm Q^{\natural})} \le 1.
+	\end{equation}
+\end{proposition}
+
+\begin{proof}
+	根据定义，$\bm Q^{\natural}$ 是离散约束下的最优解，而 $\bm Q^\star$ 是无约束连续最优解，显然成立 $p(\bm Q^{\text{CPP}}) \leq p(\bm Q^{\natural}) \leq p(\bm Q^\star)$。因此，只需找到 $p(\bm Q^{\text{CPP}})$ 与 $p(\bm Q^\star)$ 之间的比例关系即可确定下界。
+	
+	首先，回顾连续最优解对应的目标函数值形式。令 $\Lambda_i = j \sum_{l=1}^{N_{e}} g_{i,l} h_{i,l}$，将定理~\ref{the:cdma_Qstar}中的连续最优相位 $\phi_{i,l}^\star$ 代入目标函数，可得：
+	\begin{equation}\label{eq:ddma_p_Qstar}
+		p(\bm Q^\star) = \frac{1}{4}\sum_{i=1}^{N_{d}} \left( |\Lambda_i| + \sum_{l=1}^{N_{e}} |g_{i,l} h_{i, l}| \right)^{2}.
+	\end{equation}
+	接下来计算CPP算法的目标函数值 $p(\bm Q^{\text{CPP}})$：
+	\begin{subequations}
+		\begin{align}
+			p(\bm Q^{\text{CPP}})
+			&= \frac{1}{4}\sum_{i=1}^{N_{d}}\left| \Lambda_i +\sum_{l=1}^{N_{e}} g_{i,l} h_{i, l} e^{j \phi_{i,l}^{\text{CPP}}} \right|^{2} \\
+			&= \frac{1}{4}\sum_{i=1}^{N_{d}} \left| |\Lambda_i| + \sum_{l=1}^{N_{e}} |g_{i,l} h_{i, l}| e^{j( \phi_{i,l}^{\text{CPP}} - \phi_{i,l}^\star)} \right|^{2} \\
+			&\overset{\text{(a)}}{\geq} \frac{1}{4}\sum_{i=1}^{N_{d}} \left( |\Lambda_i| + \sum_{l=1}^{N_{e}} |g_{i,l} h_{i, l}| \cos( \phi_{i,l}^{\text{CPP}} - \phi_{i,l}^\star) \right)^{2} \\
+			&\overset{\text{(b)}}{\geq} \frac{1}{4}\sum_{i=1}^{N_{d}} \left( |\Lambda_i| + \sum_{l=1}^{N_{e}} |g_{i,l} h_{i, l}| \cos \left(\frac{\pi}{M}\right) \right)^{2} \\
+			&\geq \cos^2 \left(\frac{\pi}{M}\right) \cdot \frac{1}{4} \sum_{i=1}^{N_{d}} \left( |\Lambda_i| + \sum_{l=1}^{N_{e}} |g_{i,l} h_{i, l}|\right)^{2} \\
+			&= \cos^2\left(\frac{\pi}{M}\right) p(\bm Q^\star) \geq \cos^2\left(\frac{\pi}{M}\right) p(\bm Q^\natural),
+		\end{align}
+	\end{subequations}
+	其中，步骤(a)利用了复数模值的性质$|z| \ge \text{Re}\{z\}$；步骤(b)基于CPP算法的最近邻投影原则，在均匀量化条件下，任意单元的相位量化误差满足$|\phi_{i,l}^{\text{CPP}} - \phi_{i,l}^\star| \le \frac{\pi}{M}$，结合余弦函数的单调递减性质，有 $\cos( \phi_{i,l}^{\text{CPP}} - \phi_{i,l}^\star) \ge \cos(\frac{\pi}{M})$。证毕。
+\end{proof}
+
+命题~\ref{pro:ddma_cpp_bound}确立了CPP算法的性能下界，揭示了其适用范围与局限性。在低分辨率量化场景下，CPP算法的性能保证急剧下降，特别是在1比特量化时，理论下界为 $\cos^2(\pi/2)=0$。这说明在最坏的情况下，算法可能完全失效。
+为了在低分辨率量化场景下仍然能获得可观的波束赋形增益，需要探索一种直接针对离散约束进行优化的算法。
+下一节将就此展开研究，提出一种基于辅助变量内积最大化的全局最优离散相位优化方案。
+
+
+\section{角域排序分划搜索算法}\label{sec:ddma_adsps}
+
+本节提出一种角域排序分划搜索算法以解决前述低分辨率量化条件下的性能限制问题。首先引入辅助变量，研究目标函数的几何特性，将离散组合优化问题转化为角域上的单变量优化问题；随后，针对求解过程中计算开销最大的临界角排序环节，利用相位叠加组合的秩-1结构特性，提出了一种基于多路归并的快速排序策略，实现了在多项式时间内的精确求解；进而，针对均匀量化场景，进一步压缩了有效搜索区间。
+该算法不仅保证了离散约束下解的最优性，同时将计算复杂度从穷举法的指数级别降低至多项式时间级别。
+
+
+\subsection{角域问题转化与几何特性}
+
+由于目标函数~\eqref{eq:ddma_pQ}关于不同波导具有可分离性，原问题可分解为 $N_d$ 个独立的子问题。仍然考虑第 $i$ 条波导（$i \in \{1, \dots, N_d\}$）的优化问题，通过提取洛伦兹约束中的常数项并忽略比例因子 $1/4$，该子问题可重写为：
+\begin{align}\label{eq:ddma_adsps_P}
+	\max_{\{\phi_{i,l}\}} \quad &\left|j \sum_{l=1}^{N_{e}} g_{i,l} h_{i,l} + \sum_{l=1}^{N_{e}} g_{i, l} h_{i, l} e^{j \phi_{i,l}} \right|^{2}, \\
+	\text{s.t.} \quad &\phi_{i,l} \in \bm \Phi_M,\; \forall l.
+\end{align}
+基于式~\eqref{eq:ddma_adsps_P}构建更易于几何分析的实数域形式，定义二维实向量 $\bm c_{i,l} \in \mathbb R^{2 \times 1}$：
+\begin{equation}\label{eq:ddma_adsps_c}
+	\bm c_{i,l} =
+	\begin{cases}
+		[\Re\{\Lambda_i\},\Im\{\Lambda_i\}]^\mathrm T,&\text{若}\; l=0, \\
+		[\Re\{g_{i,l} h_{i,l}\},\Im\{g_{i,l} h_{i,l}\}]^\mathrm T,&  \text{若}\; 1\le l \le N_e,
+	\end{cases}
+\end{equation}
+其中 $\Lambda_i = j \sum_{l=1}^{N_{e}} g_{i,l} h_{i,l}$ 为第 $i$ 条波导的固有信道项。
+进一步地，引入如下的旋转矩阵 $\bm{U}(\phi) \in \mathbb{R}^{2 \times 2}$：
+\begin{equation}\label{eq:ddma_adsps_U}
+	\bm{U}(\phi_{i,l}) = \begin{bmatrix} \cos\phi_{i,l} & \sin\phi_{i,l} \\ -\sin\phi_{i,l} & \cos\phi_{i,l} \end{bmatrix},
+\end{equation}
+则第 $i$ 个子问题等价转化为如下的范数最大化形式：
+\begin{equation}\label{eq:ddma_adsps_PU}
+	\max_{\{\phi_{i,l}\}} \; \left\|\bm{c}_{i,0} + \sum_{l=1}^{N_e} \bm{U}(\phi_{i,l}) \bm{c}_{i,l}\right\|^2,
+	\quad \text{s.t.} \; \phi_{i,l} \in \bm \Phi_M,\; \forall l.
+\end{equation}
+
+通过引入单位模长的辅助向量 $\bm{t} = [\cos\theta, \sin\theta]^\mathrm{T},\theta \in [0, 2\pi)$，利用柯西-施瓦茨不等式得到范数的变分形式 $\|\bm v\| = \max_{\|\bm t\|=1} \langle \bm v, \bm t \rangle$，目标函数可以等价转化为：
+\begin{align}
+	\left\|\bm{c}_{i,0} + \sum_{l=1}^{N_e} \bm{U}(\phi_{i,l}) \bm{c}_{i,l}\right\|^2
+	&= \left\|\bm{c}_{i,0} + \sum_{l=1}^{N_e} \bm{U}(\phi_{i,l}) \bm{c}_{i,l}\right\|^2 \|\bm{t}\|^2 \\
+	&= \max_{\|\bm{t}\| = 1} \left\langle \bm{c}_{i,0} + \sum_{l=1}^{N_e} \bm{U}(\phi_{i,l}) \bm{c}_{i,l}, \bm{t} \right\rangle^2. \label{eq:ddma_adsps_Cauchy}
+\end{align}
+对于给定的 $\theta$，式~\eqref{eq:ddma_adsps_Cauchy}中的内积项取决于 $\{\phi_{i,l}\}$，定义该内积关于$\theta$的最大值为：
+\begin{equation}\label{eq:ddma_adsps_F}
+	\mathcal F_i (\theta) \triangleq \max_{\{\phi_{i,l}\}} \left\langle \bm{c}_{i,0} + \sum_{l=1}^{N_e} \bm{U}(\phi_{i,l}) \bm{c}_{i,l}, \bm{t} \right\rangle.
+\end{equation}
+将向量$\bm{c}_{i,l}$参数化为极坐标的形式 $\bm{c}_{i,l} = \|\bm{c}_{i,l}\| [\cos\vartheta_{i,l},\sin\vartheta_{i,l}]^\mathrm{T}$，根据内积的几何定义，问题~\eqref{eq:ddma_adsps_PU}转化为关于辅助角 $\theta$ 的单变量优化问题：
+\begin{equation}\label{eq:ddma_adsps_Ftheta}
+	\max_{\theta \in [0, 2\pi)} \mathcal{F}_i(\theta) \triangleq \|\bm{c}_{i,0}\|\cos(\theta - \vartheta_{i,0}) + \sum_{l=1}^{N_e} \|\bm{c}_{i,l}\| \cos(\theta - \vartheta_{i,l} - \check{\phi}_{i,l}),
+\end{equation}
+其中 $\check{\phi}_{i,l}$ 为给定 $\theta$ 下第 $i$ 条波导上第 $l$ 个单元的最优相位选择：
+\begin{equation}\label{eq:ddma_adsps_checkphi}
+	\check{\phi}_{i,l} = \mathop{\arg\max}_{\phi_{i,l} \in \bm \Phi_M} \cos(\theta - \vartheta_{i,l} - \phi_{i,l}).
+\end{equation}
+
+由式~\eqref{eq:ddma_adsps_checkphi}可知，对于给定的 $\theta$，考虑到相位的离散特性，$\check{\phi}_{i,l}$ 应当使 $\theta$ 与 $\vartheta_{i,l} + \phi_{i,l}$ 之间的角度差最小。
+所以当 $\theta$ 连续变化时，仅当其穿过两个相邻离散相位的角平分线时，$\check{\phi}_{i,l}$才会发生跳变，则对于第$i$条波导，所有导致决策跳变的临界角集合$\bm \Theta_i$可表示为：
+\begin{equation}\label{eq:ddma_adsps_Theta_i}
+	\bm \Theta_i = \left\{ (\vartheta_{i,l} + \frac{\Phi_m + \Phi_{m+1}}{2}) \bmod 2\pi \mid l=1,\dots,N_e, \; m=1,\dots,M \right\}.
+\end{equation}
+这些临界角将周期 $[0, 2\pi)$分划为最多$MN_e+1$个互不重叠的区间。
+
+为了找到最优的相位配置，需要在整个角域 $\theta \in [0, 2\pi)$ 上进行全面搜索。通过去除重复角度并按升序排列临界角集合 $\bm \Theta_i$，可以构建一系列连续区间：
+\begin{equation}\label{eq:ddma_adsps_theta_intervals}
+	[\Theta_0, \Theta_1), \cdots, [\Theta_z, \Theta_{z+1}), \cdots, [\Theta_Z, \Theta_{Z+1}),
+\end{equation}
+其中 $\Theta_0 = 0$，$\Theta_{Z+1} = 2\pi$，且 $Z \le MN_e$。值得注意的是，由于角度的周期性，首区间 $[\Theta_0, \Theta_1)$ 与末区间 $[\Theta_Z, \Theta_{Z+1})$ 在逻辑上是连通的。
+在任意一个区间$[\Theta_z, \Theta_{z+1})$内，所有单元的离散相位$\check{\phi}_{i,l}$均保持恒定，从而$\mathcal{F}_i(\theta)$处处可微。对其求导可得：
+\begin{equation}\label{eq:ddma_adsps_dF}
+	\mathcal{F}_i'(\theta) = -\|\bm{c}_{i,0}\|\sin(\theta - \vartheta_{i,0}) - \sum_{l=1}^{N_e}\|\bm c_{i,l}\|\sin(\theta - \vartheta_{i,l} - \check{\phi}_{i,l}).
+\end{equation}
+令导数为零，可求得该区间内的唯一驻点$\theta_z^c$：
+\begin{equation}\label{eq:ddma_adsps_thetazc}
+	\theta_z^c = \arctan\left( \frac{\|\bm c_{i,0}\|\sin\vartheta_{i,0}+\sum_{l=1}^{N_e} \|\bm c_{i,l}\| \sin(\vartheta_{i,l}+\check{\phi}_{i,l})}
+	{\|\bm c_{i,0}\|\cos\vartheta_{i,0}+\sum_{l=1}^{N_e} \|\bm c_{i,l}\| \cos(\vartheta_{i,l}+\check{\phi}_{i,l})} \right).
+\end{equation}
+通过遍历所有临界角以及各区间内部的驻点，必然能在多项式时间内找到 $\mathcal{F}_i(\theta)$ 的全局最大值。
+
+这一策略的实施依赖于对临界角集合$\bm \Theta_i$的有序排列，若直接对 $\bm \Theta_i$ 中 $MN_e$ 个元素进行全排序，其计算复杂度将达到 $\mathcal{O}(MN_e \log(MN_e))$。
+为了进一步降低算法开销，下一小节将利用 $\bm \Theta_i$ 的生成结构特性，提出一种高效的快速排序与分划策略。
+
+\subsection{基于外和结构的快速排序与分划}
+
+ADSPS算法的核心挑战在于对每条波导的临界角集合 $\bm \Theta_i$ 进行高效排序，以构建连续的搜索区间。
+回顾式~\eqref{eq:ddma_adsps_Theta_i}，临界角集合 $\bm \Theta_i$ 由 $M$ 个离散相位决策边界 $\tau_m=(\Phi_m + \Phi_{m+1})/2$ 与 $N_e$ 个信道相位 $\vartheta_{i,l}$ 两两求和生成。
+若将 $\bm \Theta_i$ 视为一个 $N_e \times M$ 的矩阵，其元素$[\bm \Theta_i]_{l,m}$由列向量 $\bm \vartheta_i = [\vartheta_{i,1}, \cdots, \vartheta_{i,N_e}]^\mathrm{T}$ 和行向量 $\bm \tau = [\tau_1, \cdots, \tau_M]$ 的和构成，可表示为：
+\begin{equation}
+	[\bm \Theta_i]_{l,m} = (\vartheta_{i,l} + \tau_m) \bmod 2\pi.
+\end{equation}
+从代数结构上看，矩阵 $\bm \Theta_i$ 对应于两个单位模长复向量外积的主辐角，在相位域中，这种特殊的加法结构使得当生成向量有序时，矩阵 $\bm \Theta_i$ 的行或列也呈现出特定的单调性。
+利用这一性质，可以避免对所有 $MN_e$ 个元素进行全排序。
+鉴于实际应用中通常满足 $N_e \gg M$，本节利用该集合的单调结构特性，提出一种基于多路归并的高效排序策略。
+
+首先，对信道相位向量 $\bm \vartheta_i$ 进行升序排列，得到有序序列 $\tilde{\bm \vartheta}_i$，满足 $0 \le \tilde\vartheta_{i,1} \le \tilde\vartheta_{i,2} \le \cdots \le \tilde\vartheta_{i,N_e} < 2\pi$。对于固定的决策边界索引 $m$，考察生成的子序列 $[\bm \Theta_i]_{l,m} = (\tilde\vartheta_{i,l} + \tau_m) \bmod 2\pi$。由于 $\tilde\vartheta_{i,l} + \tau_m$ 关于 $l$ 单调递增，且 $\tilde\vartheta_{i,l}, \tau_m \in [0, 2\pi)$，其和 $\tilde\vartheta_{i,l} + \tau_m \in [0, 4\pi)$。因此，模 $2\pi$ 运算至多导致一次数值跳变：
+\begin{equation}
+	[\bm \Theta_i]_{l,m} = 
+	\begin{cases} 
+		\tilde\vartheta_{i,l} + \tau_m, & \text{若 } \tilde\vartheta_{i,l} + \tau_m < 2\pi, \\ 
+		\tilde\vartheta_{i,l} + \tau_m - 2\pi, & \text{若 } \tilde\vartheta_{i,l} + \tau_m \ge 2\pi. 
+	\end{cases}
+\end{equation}
+这说明，虽然子序列 $[\bm \Theta_i]_{l,m}$ 整体上并非单调，但它必定由两个严格单调递增的子段拼接而成：
+\begin{align}
+	\mathcal{X}_{m,1} &= \{ \tilde\vartheta_{i,1}+\tau_m, \cdots, \tilde\vartheta_{i,l_m}+\tau_m \}, \\
+	\mathcal{X}_{m,2} &= \{ \tilde\vartheta_{i,l_m+1}+\tau_m-2\pi, \cdots, \tilde\vartheta_{i,N_e}+\tau_m-2\pi \},
+\end{align}
+其中，分割点 $l_m$ 是满足 $\tilde\vartheta_{i,l_m} < 2\pi - \tau_m \le \tilde\vartheta_{i,l_m+1}$ 的索引，可通过二分查找确定。
+通过上述分析，整个临界角集合 $\bm \Theta_i$ 实际上是由 $2M$ 个有序子序列 $\{\mathcal{X}_{1,1}, \mathcal{X}_{1,2}, \cdots, \mathcal{X}_{M,1}, \mathcal{X}_{M,2}\}$ 构成的。
+这一结构特性可以使用多路归并加速排序：维护一个大小为 $2M$ 的最小堆，用于动态管理当前所有非空子序列的队首元素。首先，将所有 $2M$ 个子序列的首元素及其所属序列号压入堆中。随后，执行 $MN_e$ 次迭代：每次弹出堆顶元素，存入结果数组 $\tilde{\bm \Theta}_{i}$；若该元素所属子序列仍有剩余元素，则读取该序列的下一元素并压入堆中，直到所有子序列均为空，完成最终的排序。
+
+
+\begin{algorithm}[!t]
+	\caption{角域排序分划搜索算法（ADSPS）}
+	\label{alg:ddma_adsps}
+	\begin{algorithmic}[1]
+		\REQUIRE 信道 $\bm g$，传输矩阵 $\bm H$，离散相移$\bm \Phi_M$，离散阶数 $M$，波导数$N_d$，单元数$N_e$。
+		\ENSURE 全局最优DMA配置矩阵 $\bm Q^{\natural}$。
+		\STATE 初始化 $\bm Q^{\natural} = \bm 0_{N \times N_d}$；
+		\FOR {$i = 1, 2, \cdots, N_d$}
+		\STATE 根据式~\eqref{eq:ddma_adsps_c}计算 $\bm c_{i,l}$ 及相位 $\vartheta_{i,l}$，计算决策偏移量 $\tau_m$；
+		\STATE 对 $\{\vartheta_{i,1}, \dots, \vartheta_{i,N_e}\}$ 进行升序排序得到 $\tilde{\bm \vartheta}_i$；
+		\STATE 初始化最小堆 $H = \emptyset$，有序临界角结果数组 $\tilde{\bm \Theta}_{i} = []$；
+		\FOR {$m = 1$ to $M$}
+		\STATE 在 $\tilde{\bm \vartheta}_i$ 中二分查找分割点 $l_m$，满足 $\tilde\vartheta_{i,l_m} < 2\pi - \tau_m \le \tilde\vartheta_{i,l_m+1}$；
+		\STATE 构建子序列 $\mathcal{X}_{m,1}$ 和 $\mathcal{X}_{m,2}$；
+		\STATE 若 $\mathcal{X}_{m,1}$ 或 $\mathcal{X}_{m,2}$ 非空，则将其首元素及其所属序列号ID压入堆$H$；
+		\ENDFOR
+		\WHILE {$H$ 非空}
+		\STATE 弹出堆顶元素 $(\theta, \text{ID})$，将 $\theta$ 追加至 $\tilde{\bm \Theta}_{i}$；
+		\STATE 若序列 $\text{ID}$ 仍有后继元素，读取下一元素并压入堆 $H$；
+		\ENDWHILE
+		\STATE 去除有序集合 $\tilde{\bm \Theta}_{i}$中的重复元素，根据式~\eqref{eq:ddma_adsps_theta_intervals}构建区间序列；
+		\FOR {每个有效区间$[\Theta_z, \Theta_{z+1})$}
+		\STATE 根据式~\eqref{eq:ddma_adsps_checkphi}确定区间内的离散相位配置$\{\check{\phi}_{i,l}\}$；
+		\STATE 利用式~\eqref{eq:ddma_adsps_thetazc}计算驻点 $\theta_z^c$；
+		\IF {$\theta_z^c \in (\Theta_z, \Theta_{z+1})$}
+		\STATE 计算目标函数值$\mathcal{F}_i(\theta_z^c)$；
+		\ENDIF
+		\STATE 与区间端点的函数值比较，得到区间内的最大值及对应的最优角 $\theta^{\natural}$；
+		\ENDFOR
+		\STATE 根据全局最大值对应的$\theta^{\natural}$反解最优离散相位$\{{\phi}_{i,l}^{\natural}\}$，更新 $[\bm Q^{\natural}]_{(i-1)N_e+1:iN_e, i}$；
+		\ENDFOR
+		\RETURN $\bm Q^{\natural}$。
+	\end{algorithmic}
+\end{algorithm}
+
+综合上述分析，对每个波导进行分化搜索，可得到问题~\eqref{eq:ddma_pQ}的全局最优解$\bm Q^{\natural}$。
+ADSPS算法的完整流程如算法~\ref{alg:ddma_adsps}所示。
+下面对该算法的计算复杂度进行详细分析。
+ADSPS算法的计算开销由临界角排序与区间搜索两个阶段共同决定。
+对于单个波导子问题，在排序阶段主要有预排序、虚拟分割和多路归并这三个步骤：对长度为 $N_e$ 的信道相位向量进行预排序，复杂度为 $\mathcal{O}(N_e \log N_e)$；
+在查找定位分割点 $l_m$中，需要执行 $M$ 次二分查找，每次查找长度为 $N_e$，复杂度为 $\mathcal{O}(M \log N_e)$；在归并排序中，共进行了$MN_e$次堆的插入与删除操作，堆的大小维持在 $2M$，单次操作复杂度为 $\mathcal{O}(\log M)$，总归并复杂度为 $\mathcal{O}(MN_e \log M)$。
+相较于对所有元素进行全排序，该策略实现了显著的复杂度下降。
+随后进入区间搜索，算法在生成的至多 $MN_e+1$ 个连续区间 $[\Theta_z, \Theta_{z+1})$ 内进行搜索，在每个有效区间内，需要依据式~\eqref{eq:ddma_adsps_thetazc}计算驻点 $\theta_z^c$ 并评估目标函数值。
+当辅助角 $\theta$ 跨越任意临界角进入相邻区间时，仅有一个特定天线单元的离散最优相位 $\check{\phi}_{i,l}$ 会发生跳变，因此，可以采用增量更新机制来计算式~\eqref{eq:ddma_adsps_thetazc}中的三角函数求和项，使得单次区间切换和驻点计算的复杂度仅为$\mathcal{O}(1)$。基于此滑动窗口式的计算策略，整个区间搜索阶段的计算复杂度为 $\mathcal{O}(MN_e)$。
+考虑到原问题由 $N_d$ 条相互独立的波导构成，所提ADSPS算法的整体计算复杂度最终可表示为：
+\begin{equation}\label{eq:ddma_adsps_complexity}
+	\mathcal{O}\left( N_d (N_e \log N_e + M \log N_e + MN_e \log M + MN_e) \right).
+\end{equation}
+相比之下，若采用传统的穷举搜索法直接在离散相位集合 $\bm \Phi_M$ 中寻找每条波导的最优配置，其计算复杂度为 $\mathcal{O}(N_d M^{N_e})$。
+ADSPS算法不仅在理论上严格保证了离散量化约束下波束赋形解的全局最优性，更将问题的计算开销从穷举法的指数级别降低至多项式级别。
+
+\subsection{均匀量化下的搜索空间分析}
+
+尽管ADSPS算法在一般任意离散相移场景下已经具备了多项式级别的计算复杂度，但对于实际中应用最广泛的均匀量化情形，最优解的搜索空间可以进一步压缩。下述命题给出了精简后的有效搜索空间。
+
+\begin{proposition}\label{pro:ddma_thetaFlat}
+	若离散相位集合 $\bm \Phi_M$ 为均匀分布，令 $\theta_i^{\natural} = \mathop{\arg\max}_{\theta \in [0,2\pi)} \mathcal{F}_i(\theta)$ 为第 $i$ 条波导对应的最优辅助角。
+	则$\theta_i^\natural$必然位于以下区间内：
+	\begin{equation}\label{eq:ddma_thetaFlatin}
+		\theta_i^{\natural} \in
+		\begin{cases}
+			[0,\vartheta_{i,0}+\frac{\pi}{M})\cup(\vartheta_{i,0}-\frac{\pi}{M}+2\pi,2\pi), & \text{若}\; \vartheta_{i,0} < \frac{\pi}{M}, \\
+			[0,\vartheta_{i,0}+\frac{\pi}{M}-2\pi)\cup(\vartheta_{i,0}-\frac{\pi}{M},2\pi), & \text{若}\; \vartheta_{i,0} > 2\pi- \frac{\pi}{M}, \\
+			(\vartheta_{i,0}-\frac{\pi}{M}, \vartheta_{i,0}+\frac{\pi}{M}), & \text{其他情况}.
+		\end{cases}
+	\end{equation}
+	更进一步地，假设 $\mathcal{F}_i(\theta)$ 在区间 $[\Theta_z, \Theta_{z+1})$ 内取得全局最大值，则必有：
+	\begin{equation}\label{eq:ddma_thetaFlatzc}
+		\theta_i^{\natural} = \theta_z^c \in (\Theta_z, \Theta_{z+1}),
+	\end{equation}
+	即最优解总是位于某个区间的内部，而不会落在任意区间的边界端点上。
+\end{proposition}
+
+\begin{proof}
+	首先证明式~\eqref{eq:ddma_thetaFlatin}的邻域约束。由反证法，根据式~\eqref{eq:ddma_adsps_Ftheta}，将目标函数分解为常数信道项与可调相位项之和，定义辅助函数：
+	\begin{equation}\label{eq:ddma_F0}
+		\mathcal F_{i,0}(\theta) = \sum_{l=1}^{N_e} \|\bm{c}_{i,l}\| \cos(\theta - \vartheta_{i,l} - \check{\phi}_{i,l}),
+	\end{equation}
+	则原目标函数可表示为 $\mathcal F_i(\theta) = \|\bm{c}_{i,0}\| \cos(\theta - \vartheta_{i,0}) + \mathcal F_{i,0}(\theta)$。
+	由于均匀量化集合中相位的等间隔特性，对于任意给定的 $\theta$，将其平移 $2\pi/M$ 的整数倍后，所有单元的量化决策 $\check{\phi}_{i,l}$ 也会随之同步发生 $2\pi/M$ 的循环移位，因此，辅助函数 $\mathcal F_{i,0}(\theta)$ 是一个周期为 $2\pi/M$ 的周期函数。
+	假设$\theta_i^{\natural} = \mathop{\arg\max}_{\theta \in [0,2\pi)} \mathcal{F}_i(\theta)$，有：
+	\begin{equation}\label{eq:ddma_F0flat}
+		\mathcal F_{i,0}(\theta_i^{\natural}) = \mathcal F_{i,0}\left(\theta_i^{\natural} + \frac{2\pi}{M}\right) = \cdots = \mathcal F_{i,0}\left(\theta_i^{\natural} + \frac{2(M-1)\pi}{M}\right).
+	\end{equation}
+	
+	假设$\theta_i^{\natural}$ 落在了式~\eqref{eq:ddma_thetaFlatin}所定义的区间之外，则必然存在一个整数$m$，使得平移后的角度 $\theta_i^{\natural} + \frac{2m\pi}{M}$ 恰好落入式~\eqref{eq:ddma_thetaFlatin}所定义的区间内。
+	此时，由于平移后的角度更接近 $\vartheta_{i,0}$，余弦函数的单调性决定了 $\cos(\theta_i^{\natural} + \frac{2m\pi}{M} - \vartheta_{i,0}) > \cos(\theta_i^{\natural} - \vartheta_{i,0})$。
+	结合式~\eqref{eq:ddma_F0flat}，可推得 $\mathcal{F}_i(\theta_i^{\natural} + \frac{2m\pi}{M}) > \mathcal{F}_i(\theta_i^{\natural})$。
+	这与 $\theta_i^{\natural}$ 是 $\mathcal{F}_i(\theta)$ 全局最大值点的假设相矛盾。因此，式~\eqref{eq:ddma_thetaFlatin}得证。
+	
+	接下来证明式~\eqref{eq:ddma_thetaFlatzc}，回顾式~\eqref{eq:ddma_adsps_Cauchy}的推导，$\mathcal{F}_i(\theta)$取得最大值等价于柯西-施瓦茨不等式取等号。
+	这意味着合成向量 $\bm{c}_{i,0} + \sum_{l=1}^{N_e} \bm{U}(\phi_{i,l}) \bm{c}_{i,l}$ 与辅助向量 $\bm{t}$ 平行，从而最大值只能在内部驻点 $\theta_z^c$ 处取得。
+	现在进一步排除驻点$\theta_z^c$恰好落在区间端点$\Theta_z$的可能性。
+	再次采用反证法，假设 $\theta_i^{\natural} = \Theta_z = \vartheta_{i,l} + \frac{(2m-1)\pi}{M}$，即最大值在第 $l$ 个单元的第 $m$ 个决策边界处取得。
+	在此假设下，$\check{\phi}_{i,l}$ 的取值为 $\frac{2(m-1)\pi}{M}$ 或 $\frac{2m\pi}{M}$。
+	构造剔除第 $l$ 个单元影响的剩余函数：
+	\begin{equation}\label{eq:ddma_Fil}
+		\mathcal F_{i,l}(\theta) = \mathcal F_i(\theta) - \|\bm{c}_{i,l}\| \cos(\theta - \vartheta_{i,l} - \check{\phi}_{i,l}).
+	\end{equation}
+	
+	易知 $\mathcal{F}_{i,l}(\theta)$ 在 $\theta = \Theta_z$ 处是连续且可导的。
+	当从左侧逼近边界时，$\check{\phi}_{i,l} = \frac{2(m-1)\pi}{M}$，此时原函数$\mathcal{F}_i(\theta)$在 $\Theta_z$ 处的左导数为：
+	\begin{equation}
+		\mathcal{F}_{i-}'(\Theta_z) = \mathcal{F}_{i,l}'(\Theta_z) - \|\bm{c}_{i,l}\| \sin\left(\frac{\pi}{M}\right) = 0.
+	\end{equation}
+	而当从右侧逼近边界时，$\check{\phi}_{i,l} = \frac{2m\pi}{M}$，对应的右导数为：
+	\begin{equation}
+		\mathcal{F}_{i+}'(\Theta_z) = \mathcal{F}_{i,l}'(\Theta_z) + \|\bm{c}_{i,l}\| \sin\left(\frac{\pi}{M}\right) > 0.
+	\end{equation}
+	右导数大于零表明函数$\mathcal{F}_i(\theta)$在穿过 $\Theta_z$ 后将继续增加，这与 $\Theta_z$ 为局部最大值点的假设矛盾。同理，若设定右导数为零，则推得左导数小于零，同样导致矛盾。因此，最优角 $\theta_i^{\natural}$ 必然严格位于某开区间 $(\Theta_z, \Theta_{z+1})$ 的内部。
+\end{proof}
+
+命题~\ref{pro:ddma_thetaFlat}表明，在均匀量化下，有效搜索区域的角域宽度被限制为 $2\pi/M$，每个天线单元有且仅有一个临界角会落入该有效邻域内。相较于原始至多$MN_e$个分划区间，落入该有效邻域内的区间数量大幅下降至仅约$N_e+1$个。对这些筛选出的有效临界角进行局部排序的复杂度为$\mathcal{O}(N_e \log N_e)$。
+其次，式~\eqref{eq:ddma_thetaFlatzc}明确了极值点不会出现在边界上。因此，在遍历有效区域内的区间 $[\Theta_z, \Theta_{z+1})$ 时，只需简单检验计算得到的驻点 $\theta_z^c$ 是否满足 $\theta_z^c \in (\Theta_z, \Theta_{z+1})$ 即可。若不满足，则直接舍弃该候选点；若满足，则保留并计算对应的函数值 $\mathcal{F}_i(\theta_z^c)$。
+整个搜索阶段的复杂度也相应降低至$\mathcal{O}(N_e)$。
+因此，考虑$N_d$条波导，针对均匀量化条件精简后的ADSPS算法的整体计算复杂度可表示为$\mathcal{O}\left( N_d (N_e \log N_e + N_e) \right)$。
+
+\subsection{算法性能下界分析}
+
+前述小节从理论上证明了ADSPS算法能在多项式时间内寻找到离散量化约束下的全局最优解，并大幅降低了计算复杂度。
+为了进一步从理论层面揭示该算法相比最近点投影算法在低分辨率量化条件下的鲁棒性与性能优势，本小节将对其波束赋形增益的性能下界展开推导与分析。
+
+首先考虑1-bit均匀量化情况，离散相位集合$\bm \Phi_2 = \{0, \pi\}$是目前应用最广泛的低分辨率配置。
+此时，目标函数$\mathcal F_{i}(\theta)$退化为：
+\begin{equation}\label{eq:ddma_Fi_theta_1bit}
+	\mathcal F_{i}(\theta) = \sum_{l=0}^{N_e} \|\bm{c}_{i,l}\| |\cos(\theta - \vartheta_{i,l})|.
+\end{equation}
+该函数可视为在辅助角 $\theta$上各天线单元信道向量投影绝对值之和。通过相似的一维连续搜索，ADSPS算法能够协调所有天线单元的符号选择。下面通过命题的形式给出其在1比特情形的性能下界。
+
+\begin{proposition}\label{pro:ddma_adsps_1bit_bound}
+	对于1比特均匀量化情形，设 $\bm Q^{\natural}$ 为采用ADSPS算法获得的离散全局最优配置矩阵，$\bm Q^{\star}$ 为无约束连续最优配置矩阵。则ADSPS算法的目标性能满足以下界限：
+	\begin{equation}
+		p(\bm Q^{\natural}) \ge \frac{1}{4} p(\bm Q^{\star}).
+	\end{equation}
+\end{proposition}
+
+\begin{proof}
+	两相位均匀量化下第 $i$ 条波导的最大化子问题等价于求 $\max_{\theta \in [0, 2\pi)} |\mathcal F_i(\theta)|^2$。
+	由于对于任意实数 $x \in [-1, 1]$ 均有 $|x| \ge x^2$ 成立，根据式~\eqref{eq:ddma_Fi_theta_1bit}，利用该不等式放缩 $|\cos(\theta - \vartheta_{i,l})|$，目标函数的最大值可建立如下界限：
+	\begin{align}
+		\max_{\theta \in [0, 2\pi)} \left| \mathcal F_i(\theta) \right|^2 
+		&= \max_{\theta \in [0, 2\pi)} \left| \sum_{l=0}^{N_e} \|\bm c_{i,l}\| |\cos(\theta - \vartheta_{i,l})| \right|^2 \nonumber \\
+		&\ge \max_{\theta \in [0, 2\pi)} \left| \sum_{l=0}^{N_e} \|\bm c_{i,l}\| \cos^2(\theta - \vartheta_{i,l}) \right|^2 \nonumber \\
+		&= \max_{\theta \in [0, 2\pi)} \left| \sum_{l=0}^{N_e} \|\bm c_{i,l}\| \frac{1 + \cos(2(\theta - \vartheta_{i,l}))}{2} \right|^2 \nonumber \\
+		&= \medmath{\max_{\theta \in [0, 2\pi)} \left| \sum_{l=0}^{N_e} \frac{\|\bm c_{i,l}\|}{2} + \sum_{l=0}^{N_e} \frac{\|\bm c_{i,l}\|}{2} \cos(2\vartheta_{i,l})\cos(2\theta) + \sum_{l=0}^{N_e} \frac{\|\bm c_{i,l}\|}{2} \sin(2\vartheta_{i,l})\sin(2\theta) \right|^2}. \label{eq:ddma_proof_1bit_expand}
+	\end{align}
+	对于式~\eqref{eq:ddma_proof_1bit_expand}中的后两项，总可以找到一个特定的辅助角 $\theta \in [0, 2\pi)$，使得 $\cos(2\theta)$ 和 $\sin(2\theta)$ 分别与常数系数 $\sum_{l=0}^{N_e} \frac{\|\bm c_{i,l}\|}{2} \cos(2\vartheta_{i,l})$ 和 $\sum_{l=0}^{N_e} \frac{\|\bm c_{i,l}\|}{2} \sin(2\vartheta_{i,l})$ 具有相同的符号。
+	这说明在该特定的 $\theta$ 处，这两项分量之和必定非负。
+	因此，该式在整个周期上的最大值必定不小于第一项常数分量：
+	\begin{equation}\label{eq:ddma_proof_1bit_final}
+		\max_{\theta \in [0, 2\pi)} \left| \mathcal F_i(\theta) \right|^2 \ge \left| \sum_{l=0}^{N_e} \frac{\|\bm c_{i,l}\|}{2} \right|^2 = \frac{1}{4} \left( \sum_{l=0}^{N_e} \|\bm c_{i,l}\| \right)^2.
+	\end{equation}
+	将式~\eqref{eq:ddma_proof_1bit_final}代入系统整体目标函数 $p(\bm Q^{\natural}) = \frac{1}{4} \sum_{i=1}^{N_d} \max_\theta (\mathcal F_i(\theta))^2$ 中，并对照式~\eqref{eq:ddma_p_Qstar}中无约束连续最优目标函数 $p(\bm Q^{\star})$ 的表达式，直接可得 $p(\bm Q^{\natural}) \ge \frac{1}{4} p(\bm Q^{\star})$。证毕。
+\end{proof}
+
+命题~\ref{pro:ddma_adsps_1bit_bound}证实了在1比特量化下，ADSPS算法仍能保证获得理想连续相移情形$25\%$以上的波束赋形增益，而前节CPP算法的理论性能下界为 $\cos^2(\pi/2) = 0$。这是因为CPP算法仅对各单元相位进行孤立的就近量化投影，当信道相位恰好处于量化死区边缘时，容易引起各个单元的相消叠加；而ADSPS算法通过在角域 $[0, 2\pi)$ 上的全局协同搜索，有效避免了这种情况的发生。
+在上述代数不等式推导的基础上，进一步放宽对量化阶数的限制，可以推导任意$M$阶均匀量化下ADSPS算法的普遍性能下界。
+
+\begin{proposition}\label{pro:ddma_adsps_Mbit_bound}
+	对于任意离散阶数 $M \ge 2$ 的均匀量化情形，ADSPS算法获得的离散最优目标函数值 $p(\bm Q^{\natural})$ 与无约束连续最优值 $p(\bm Q^{\star})$ 满足如下界限：
+	\begin{equation}\label{eq:ddma_adsps_Mbit_bound}
+		p(\bm Q^{\natural}) \ge \left( \frac{M}{\pi} \sin \frac{\pi}{M} \right)^2 p(\bm Q^{\star}).
+	\end{equation}
+\end{proposition}
+
+\begin{proof}
+	对于任意波导$i$，根据式~\eqref{eq:ddma_adsps_Ftheta}和命题~\ref{pro:ddma_thetaFlat}的结论，在均匀量化条件下，最优辅助角 $\theta_i^{\natural}$ 必定落入以常数信道求和项的相位 $\vartheta_{i,0}$为中心、宽度为$2\pi/M$的有效搜索邻域内。
+	不失一般性，可将该连通的有效搜索区间等效记为 $\mathcal{I}_i = [\vartheta_{i,0} - \frac{\pi}{M}, \vartheta_{i,0} + \frac{\pi}{M}]$。
+	
+	既然全局最大值必定在该区间 $\mathcal{I}_i$ 内取得，那么目标函数的全局最大值自然不小于其在该特定局部区间上的积分平均值，即：
+	\begin{equation}
+		\max_{\theta \in [0, 2\pi)} \mathcal F_i(\theta) = \max_{\theta \in \mathcal{I}_i} \mathcal F_i(\theta) \ge \frac{M}{2\pi} \int_{\vartheta_{i,0} - \frac{\pi}{M}}^{\vartheta_{i,0} + \frac{\pi}{M}} \mathcal F_i(\theta) \, \mathrm{d}\theta.
+	\end{equation}
+	分别对常数项和可调相位项进行区间积分计算，对于常数信道求和项，其在区间 $\mathcal{I}_i$ 上的积分为：
+	\begin{equation}
+		\frac{M}{2\pi} \int_{\vartheta_{i,0} - \frac{\pi}{M}}^{\vartheta_{i,0} + \frac{\pi}{M}} \|\bm c_{i,0}\| \cos(\theta - \vartheta_{i,0}) \, \mathrm{d}\theta  
+		= \|\bm c_{i,0}\| \frac{M}{\pi} \sin \frac{\pi}{M}.
+	\end{equation}
+	对于第 $l$ 个可调相位项，根据式~\eqref{eq:ddma_adsps_checkphi}中离散相位 $\check{\phi}_{i,l}$ 的最优决策准则，在均匀量化条件下，连续相位 $(\theta - \vartheta_{i,l})$ 与其最优离散选择 $\check{\phi}_{i,l}$ 之间的量化误差是一个关于 $\theta$ 的周期函数，其周期恰为 $2\pi/M$。
+	由于积分区间 $\mathcal{I}_i$ 的长度正好涵盖一个完整的周期，该项在 $\mathcal{I}_i$ 上的积分不受信道相位偏移的影响，恒等于余弦函数在标准量化误差区间 $[-\frac{\pi}{M}, \frac{\pi}{M}]$ 上的积分：
+	\begin{equation}
+		\frac{M}{2\pi} \int_{\mathcal{I}_i} \|\bm c_{i,l}\| \cos(\theta - \vartheta_{i,l} - \check{\phi}_{i,l}) \, \mathrm{d}\theta = \|\bm c_{i,l}\| \frac{M}{2\pi} \int_{-\frac{\pi}{M}}^{\frac{\pi}{M}} \cos(x) \, \mathrm{d}x = \|\bm c_{i,l}\| \frac{M}{\pi} \sin \frac{\pi}{M}.
+	\end{equation}
+	合并以上各项，可得：
+	\begin{equation}
+		\max_{\theta \in [0, 2\pi)} \mathcal F_i(\theta) \ge \left( \frac{M}{\pi} \sin \frac{\pi}{M} \right) \left( \|\bm c_{i,0}\| + \sum_{l=1}^{N_e} \|\bm c_{i,l}\| \right).
+	\end{equation}
+	对上式两侧进行平方，并对所有波导 $i=1,\dots,N_d$ 求和。最后，代入系统总目标函数$p(\bm Q)$并对照式~\eqref{eq:ddma_p_Qstar}，即证得式~\eqref{eq:ddma_adsps_Mbit_bound}。
+\end{proof}
+
+对比上述两个命题可以发现，基于局部积分均值特性推导的命题~\ref{pro:ddma_adsps_Mbit_bound}提供了一个更为普适且紧致的下界，证明了所提ADSPS算法的性能下限由于启发式的CPP算法。
+随着量化阶数 $M$ 的增加，下界因子 $( \frac{M}{\pi} \sin \frac{\pi}{M} )^2$ 将迅速逼近 1，说明ADSPS算法在高分辨率条件下能快速逼近连续最优解。
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+
+\section{数值仿真分析}
+
+\section{本章小结}
+
+\textcolor{red}{之后再写}
+
+
+
+
+%由于 $a_1, a_2, M$ 均为正数，这从理论上直接证明了在相同的量化条件下，CPP算法能够获得比松弛算法更高的波束赋形增益。为了量化评估相位离散化带来的性能折损，定义连续相移下的理想平均信噪比为 $\gamma^\star \triangleq \lim_{M \to \infty} \gamma^{\text{CPP}}_{\text{uni}}$。利用极限 $\lim_{M \to \infty} M \sin(\frac{\pi}{M}) = \pi$，可得：
+%\begin{equation}\gamma^\star = \frac{P_t \rho N_d}{4\sigma^2 N_e}\left(2a_2+\frac{\kappa}{\kappa+1} \left(\sqrt{\pi a_2 a_1^2}+a_1^2-a_2\right)\right).\end{equation}
+%进一步定义量化性能损失比 $\varepsilon \triangleq \frac{\gamma}{\gamma^\star}$，其中 $\gamma$ 可取 $\gamma^{\text{CPP}}_{\text{uni}}$ 或 $\gamma^{\text{Rel}}_{\text{uni}}$。图~\ref{fig:performance_loss}展示了在不同单元数 $N_e$ 配置下，CPP算法、松弛算法以及随机相位方法的性能损失 $\varepsilon$ 随量化比特数（即状态数 $M$）的变化趋势。图中随机方法的性能下界由式~\eqref{eq:ddma_ESrandom_closed_floor}计算所得。
+%
+%\begin{figure}[!htbp]\centering
+%	\caption{不同算法的性能损失 $\varepsilon$ 随离散相位状态数 $M$ 的变化对比 ($\kappa=10$, $\alpha = 0.6$ m$^{-1}$, $D = 0.0054$ m)}\label{fig:performance_loss}\end{figure}
+%
+%从图~\ref{fig:performance_loss}的数值结果可以得出以下分析结论：首先，CPP算法在所有配置下均显著优于松弛算法。尤其是在低量化精度（如 $M$ 较小）和波导单元数 $N_e$ 较少的情况下，CPP算法的优势更为明显。例如，当 $N_e=8$ 且 $M$ 趋于无穷大时，CPP算法相比松弛算法仍保持约 2.1 dB 的性能增益；即使当 $N_e$ 增加至 32 时，该增益仍维持在 1.3 dB 左右。这说明直接针对离散约束进行最近点投影（CPP），相比于先在松弛域求解再量化（Relaxation），能更有效地保留信号的相干叠加增益。其次，量化损失随分辨率提高而快速收敛。对于CPP算法，当 $M=8$（即3比特量化）时，性能损失已趋近于 0 dB，意味着此时系统性能已非常接近连续相移的理想情况。这为实际工程设计提供了重要参考：采用 3 比特或 4 比特的低成本移相器即可满足大部分DMA系统的性能需求。
+%最后，单元规模 $N_e$ 对量化敏感度有影响。对比不同 $N_e$ 的曲线可知，随着单条波导上单元数量的增加，系统对相位误差的敏感度降低，量化损失收敛速度加快。然而，对于松弛算法和随机方法，随着 $N_e$ 的增加（即 $N_e \to \infty$），其性能损失反而趋于一个较大的常数（例如随机方法在 $N_e \to \infty$ 时损失高达 24.8 dB），这进一步凸显了在大规模DMA阵列中采用高效波束赋形算法（如CPP）的必要性。
+%
+%\noindent\rule{\linewidth}{2pt}
+%
+%为了定量量化效应带来的性能损失，定义连续相移条件下的极限信噪比 $\gamma^\star \triangleq \lim_{M \to \infty} \gamma^{\text{CPP}}$ 作为性能基准：
+%\begin{equation}
+%	\gamma^\star = \frac{P_t \rho N_d}{4\sigma^2 N_e} \left( 2a_2 + \frac{\kappa}{\kappa+1} \left[ \sqrt{\pi a_2 a_1^2} + a_1^2 - a_2 \right] \right).
+%\end{equation}
+%相应地，定义量化性能损失因子为 $\varepsilon \triangleq \gamma / \gamma^\star$。
+%
+%\begin{figure}[!htbp]
+%	\centering
+%	\caption{不同算法的性能损失 $\varepsilon$ 随离散相移数量 $M$ 和单元数 $N_e$ 的变化关系}
+%	\label{fig:ddma_performance_loss}
+%\end{figure}
+%
+%图~\ref{fig:ddma_performance_loss}展示了CPP算法与松弛算法的性能损失 $\varepsilon$ 随离散相移数量 $M$ 及每个波导单元数 $N_e$ 的变化趋势。图中还绘制了随机相位方法的性能作为下界参考。
+%从量化精度的角度看，随着 $M$ 的增加，CPP算法的性能损失显著降低，迅速逼近连续相移基准。特别是在 $N_e \to \infty$ 这一“最差”量化场景下（即单元数众多导致累积量化误差影响最大），3位量化（$M=8$）的性能损失仅为 $0.22\text{ dB}$，而2位量化（$M=4$）的损失也仅为 $0.87\text{ dB}$。这表明在实际工程中，采用3位精度的离散DMA即可获得接近理想连续系统的性能，在硬件成本与系统性能之间取得了良好的折中。
+%
+%从算法对比的角度分析，CPP算法在各种配置下均优于传统的松弛算法。
+%对比式~\eqref{eq:ddma_gamma_cpp_uni}与式~\eqref{eq:ddma_gamma_rel_uni}可知，CPP算法的优势主要来源于信噪比表达式中包含的 $M \sin(\pi/M)$ 一次项，该项反映了CPP算法在处理离散约束时能够更有效地保留信号的相干叠加增益。
+%如图所示，当 $N_e=8$ 时，CPP算法相比松弛算法有约 $2.1\text{ dB}$ 的性能优势；即使在 $N_e$ 增大至 $32$ 时，优势依然维持在 $1.3\text{ dB}$ 左右。
+%这证明了CPP算法虽然计算简单，但在处理非凸的离散相位约束时，能够比直接量化的松弛方法更精准地逼近全局最优解，具有显著的性能优越性。
+
+
+

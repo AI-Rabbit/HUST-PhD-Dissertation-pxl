@@ -1,0 +1,923 @@
+\chapter{连续相移DMA波束赋形性能分析与相位对齐算法}\label{ch:cdma}
+
+\section{引言}
+
+\textcolor{red}{之后再写}
+
+\section{系统模型}\label{sec:cdma_system_model}
+
+本章考虑基于DMA架构的下行链路通信系统，其中基站采用DMA作为发射阵列，为单天线用户提供通信服务。如图~\ref{fig:cdma_system}所示，输入信号先经过数字基带预编码处理，然后由射频链路馈入波导起始位置，经波导传输后由单元辐射。该DMA阵列包含包含$N_d$条平行的波导，每条波导上分布着$N_e$个亚波长间隔的超材料辐射单元，则单元总数量为$N \triangleq N_d \times N_e$。
+每个辐射元件都被视为一个共振电路，令$q_{i,l}$表示第$i$条波导上第$l$个辐射单元的频率响应，其洛伦兹形式描述如下\cite{smith2017analysis}：
+\begin{equation}\label{eq:cdma_qilf}
+	q_{i,l}(f) = \frac{-\Omega f^{2}}{f^{2} - \hat f_{i,l}^{2} + j \Gamma f},
+\end{equation}
+其中$\Omega \in \mathbb R$是振荡器强度，$\hat f_{i,l}$是该单元的共振频率，$\Gamma$是阻尼因子。通过外部控制可以调节单元的共振频率，从而调控响应的幅度和相位。对于窄带系统，通常认为元件具有平坦的频率响应\cite{wang2021dynamic}。因此，每个DMA元素的响应呈现如下形式：
+\begin{equation}\label{eq:cdma_qil}
+	q_{i,l} =\frac{j+e^{j \phi_{i,l}}}{2}, \quad \phi_{i,l} \in [0, 2\pi),
+\end{equation}
+其中$\phi_{i,l}$是每个元素的可配置连续相位偏移。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.8\linewidth]{cdma/cdma_system.pdf}
+	\caption{动态超表面天线通信系统示意图}
+	\label{fig:cdma_system}
+\end{figure}
+
+信号在波导内传输会经历传播时延和衰减，这个过程可以描述为：
+\begin{equation}\label{eq:cdma_hil}
+	h_{i,l} = \frac{1}{\sqrt{N_e}}e^{-\upsilon_{i,l}(\alpha + j\beta)},\quad \forall i,l,
+\end{equation}
+其中$\alpha$、$\beta$和$\upsilon_{i,l}$分别代表波导的衰减系数、波数以及第$l$个单元在第$i$个波导中的位置。通常，对于均匀的DMA阵列，$\upsilon_{i,l} = D(l-1)$，其中$D$表示单元之间的间距。归一化系数$1/\sqrt{N_e}$的引入确保了总功率是受到约束的。这样设定是因为随着单元数量的增加，每个单元可获取的功率会减少，为简化分析，假设波导上的单元都会因为其他单元的辐射而经历相同的整体衰减过程。
+
+设$\bm{v} = [v_1, v_2, \cdots, v_{N_d}]^\mathrm{T} \in \mathbb{C}^{N_d \times 1}$表示基带输入到所有波导的向量。于是，DMA阵列辐射出的信号$\bm s \in \mathbb{C}^{N \times 1}$可以写为：
+\begin{equation}\label{eq:cdma_s}
+	\bm s=\bm{H Q v},
+\end{equation}
+其中$\bm H \in \mathbb{C}^{N \times N}$是描述所有波导信号传播效应的对角矩阵，由下式给出：
+\begin{equation}\label{eq:cdma_H}
+	\bm{H} = \operatorname{diag}\left( h_{1,1}, \cdots, h_{1,N_e}, h_{2,1}, \cdots, h_{2,N_e}, \cdots, h_{N_d,1}, \cdots, h_{N_d,N_e} \right).
+\end{equation}
+矩阵$\bm{Q}$是一个块对角矩阵，表示DMA单元的可配置权重。其形式如下：
+\begin{equation}\label{eq:cdma_Q}
+	\bm{Q} = 
+	\begin{bmatrix}
+		\bm{q}_1 & \bm{0} & \cdots & \bm{0} \\
+		\bm{0} & \bm{q}_2 & \cdots & \bm{0} \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\bm{0} & \bm{0} & \cdots & \bm{q}_{N_d}
+	\end{bmatrix}
+	\in \mathbb{C}^{N \times N_d},
+\end{equation}
+其中每个子块$\bm{q}_i \in \mathbb{C}^{N_e \times 1}$对应第$i$个波导上所有单元的权重：
+\begin{equation}
+	\bm{q}_i = 
+	\begin{bmatrix}
+		q_{i,1} \\
+		q_{i,2} \\
+		\vdots \\
+		q_{i,N_e}
+	\end{bmatrix},
+	\quad i = 1,2,\ldots,N_d.
+\end{equation}
+
+需要指出的是，$\bm H$的对角线假设忽略了超表面单元之间的相互耦合。虽然互耦会影响模型的精度并降低系统性能，但是，当波导与超表面单元导波模式弱耦合时，通常这样简化\cite{smith2017analysis}。为了进一步减小互耦，可以在设计DMA阵列的时候采取一些常用的方法，例如将辐射元件从波导中心向边缘移动，减少相邻元件之间的共同场区域，在此基础上，可以让辐射单元在波导两侧交替排列，进一步增大单元之间的间距。在本章中，假设每个波导内的元件间距不小于半个波长，这有助于确保元件不会干扰波导模式，并且元件之间的相互作用可以忽略不计。
+
+基站通过发送功率为$P_t$的单位符号$x$来为用户提供服务，并采用预编码向量$\bm w \in \mathbb{C}^{N_d \times 1}$进行预编码。因此，输入至DMA的发射信号可表示为$\bm v = \bm w x$。根据式~\eqref{eq:cdma_s}，用户端接收信号$y$可表示为：
+\begin{equation}
+	y=\sqrt{P_{t}}\bm{g}^\mathrm{T} \bm{HQw} x + \eta,
+\end{equation}
+其中，$\bm g =[g_{1,1}, \cdots, g_{1,N_e}, \cdots, g_{N_d,1}, \cdots, g_{N_d,N_e}]^\mathrm{T} \in \mathbb{C}^{N \times 1}$表示基站与用户之间的信道向量，在本章中，不失一般性，假设DMA阵列和用户之间为瑞利信道，即：$\bm g \sim \mathcal{CN}(\bm 0_{N\times1}, \sigma_g^2 \bm I_N)$，$\eta \sim \mathcal{CN}(0, \sigma^2)$为用户处的加性白高斯噪声（Additive White Gaussian Noise，AWGN）。
+
+\section{DMA最优相位配置方法与性能分析}\label{sec:cdma_opt}
+
+\subsection{波束赋形问题建模}
+
+对于给定系统，在用户处的信噪比定义为：
+\begin{equation}\label{eq:cdma_SNR}
+	\mathrm{SNR}=\frac{P_{r}}{\sigma^2}
+	=\frac{P_{t} \left| \bm{g}^\mathrm{T} \bm{HQw} \right|^2} {\sigma^2},
+\end{equation}
+其中$P_{r}$为用户的接收功率。为了使接收机的信道比最大化，需要在以下约束条件下联合优化预编码器$\bm{w}$和DMA系数矩阵$\bm{Q}$：首先，功率约束确保发射功率保持在允许的范围内；其次，洛伦兹约束要求矩阵$\bm{Q}$保持前面讨论过的结构。从式~\eqref{eq:cdma_SNR}去除常数因子$P_{t}$和$\sigma^2$，得到如下有效信道增益的最大化问题：
+\begin{align}\label{eq:cdma_P1}
+	\max_{\bm{w}, \bm{Q}} \quad & \left| \bm{g}^\mathrm{T} \bm{HQw} \right|^2, \\ 
+	\text{s.t.} \quad &\|\bm{w}\| \leq 1,\;\eqref{eq:cdma_H},\;\eqref{eq:cdma_Q}.
+\end{align}
+
+注意到，对于给定的系数矩阵$\bm Q$，最大比率传输（Maximum Ratio Transmission，MRT）给出了最大化式~\eqref{eq:cdma_P1}的最佳预编码器，即：
+\begin{equation}\label{eq:cdma_wstar}
+	\bm{w}^\star = \frac{(\bm{g}^\mathrm{T} \bm{HQ})^\mathrm{H}} {\|\bm{g}^\mathrm{T} \bm{HQ}\|}.
+\end{equation}
+将式~\eqref{eq:cdma_wstar}代入式~\eqref{eq:cdma_P1}，得到关于$\bm{Q}$的单变量优化问题：
+\begin{align}\label{eq:cdma_P2}
+	\max_{\bm{Q}} \quad & \|\bm{g}^\mathrm{T} \bm{HQ}\|^2, \\
+	\text{s.t.} \quad &\eqref{eq:cdma_H},\;\eqref{eq:cdma_Q}.
+\end{align}
+
+
+\subsection{最优相位配置方法}\label{sec:cdma_best_phase_align}
+
+在DMA系统中，一个主要的挑战是洛伦兹约束，它限制了每个辐射单元的相位和幅度，具体而言，每个单元的实际相移$\arg(q_{i,l})$被限制在区间$[0,\pi)$内，且幅度和相移存在耦合关系。这种耦合效应使信号处理任务变得复杂，使得解决问题~\eqref{eq:cdma_P2}变得不简单。现有的一些研究将洛伦兹约束放松为更容易解决的单位圆约束\cite{zhang2021beam, zhang2022beam}，使振幅保持恒定为1，只优化单元的相位，求得松弛解后再投影回原始洛伦兹约束。然而，由于恒幅约束和洛伦兹约束之间的不匹配，这种方法会导致性能下降。
+
+为了解决洛伦兹约束带来的挑战，将约束解耦为可分离的项是必要的。核心思想是将$\bm{Q}$的每个非零元素表示为常数项$j/2$和可调指数项$e^{j \phi_{i,l}}/2$的组合。这种分解可以推导出定理~\ref{the:cdma_Qstar}所描述的封闭形式的解。
+\begin{theorem}\label{the:cdma_Qstar}
+	设$\bm{Q}^\star$为连续相移条件下的问题~\eqref{eq:cdma_P2}的解，则$\bm{Q}^\star$中的非零元素$q_{i,l}^\star=(j+e^{j \phi_{i,l}^\star})/2$满足：
+	\begin{equation}\label{eq:cdma_phi_star}
+		\phi_{i,l}^\star = \left(\arg\left(j\sum_{\lambda=1}^{N_e} g_{i,\lambda} h_{i,\lambda}\right)
+		-\arg\left(g_{i,l} h_{i,l} \right)\right) \bmod 2\pi,\; \forall i,l.
+	\end{equation}
+\end{theorem}
+
+\begin{proof}
+	由于矩阵$\bm{Q}$的特殊的块对角结构，式~\eqref{eq:cdma_P2}可以被进一步简化，将矩阵运算转换成如下的求和形式：
+	\begin{equation}\label{eq:cdma_sumExpand}
+		\max_{\{q_{i,l}\}} \quad \sum_{i=1}^{N_{d}}\left|\sum_{l=1}^{N_{e}} g_{i, l} h_{i, l} q_{i,l}\right|^{2}, \quad
+		\text{s.t.} \quad \eqref{eq:cdma_qil},\; \forall i,l.
+	\end{equation}
+	因此，问题~\eqref{eq:cdma_sumExpand}可以解耦为$N_d$个独立的子问题，每个问题对应一个波导。以第一条波导为例，目标转化为最大化以下函数：
+	\begin{equation}\label{eq:cdma_sub1}
+		\max_{\{q_{1,l}\}} \quad \left|\sum_{l=1}^{N_{e}} g_{1, l} h_{1, l} q_{1, l}\right|^{2}, \quad
+		\text{s.t.} \quad \eqref{eq:cdma_qil},\; \forall l.
+	\end{equation}
+	将式~\eqref{eq:cdma_qil}代入式~\eqref{eq:cdma_sub1}，得到：
+	\begin{align}\label{eq:cdma_sub1Expand}
+		\max_{\{\phi_{1,l}\}} \quad &\frac{1}{4}\left|j\sum_{l=1}^{N_{e}} g_{1, l} h_{1, l} + \sum_{l=1}^{N_{e}} g_{1, l} h_{1, l} e^{j \phi_{1,l}} \right|^{2}, \\
+		\text{s.t.} \quad &\phi_{1,l} \in [0,2\pi),\; \forall l.
+	\end{align}
+	
+	式~\eqref{eq:cdma_sub1Expand}的目的是通过适当地选择相移$\phi_{1,l}$来最大化复数和的模长或平方幅度。观察这个表达式的结构，容易发现$\phi_{1,l}$的作用是旋转信道项$g_{1, l} h_{1, l}$。因此，调节$\{\phi_{1,l}\}$使得和式中的所有项$\{g_{1, l} h_{1, l}e^{j \phi_{1, l}}\}$都与$j\sum_{l=1}^{N_{e}} g_{1, l} h_{1, l}$的方向一致，确保所有单元的贡献一致地叠加，此时问题~\eqref{eq:cdma_sub1Expand}取得如下的最优解：
+	\begin{equation}\label{eq:cdma_s4sub1Expand}
+		\phi_{1,l}^{\star}=\left(-\arg(g_{1, l} h_{1, l}) + \arg\left( j\sum_{\lambda=1}^{N_{e}} g_{1, \lambda} h_{1, \lambda}\right)\right) \bmod 2\pi,\; \forall l.
+	\end{equation}
+	式~\eqref{eq:cdma_s4sub1Expand}的第一项确保每个求和项的增益能相干叠加，第二项将整体相位与$j\sum_{l=1}^{N_{e}} g_{1, l} h_{1, l}$对齐，取模运算将$\phi_{1,l}$限制在区间$[0, 2\pi)$内。对所有剩余的子问题重复此过程，从而证明该定理。
+\end{proof}
+
+定理~\ref{the:cdma_Qstar}提供了最优相移的显式表达式。通过分离相位分量$e^{j \phi_{i,l}}/2$，该方法在考虑洛伦兹约束的前提下得出了一个易于处理的闭形式解，避免了松弛方法带来的性能下降，为后续从统计意义上分析该相位配置所能达到的信噪比增益及其随系统规模变化的性能极限奠定了理论基础。
+
+\subsection{平均信噪比分析}
+
+基于第~\ref{sec:cdma_system_model}节的系统模型，本小节将推导最优相位配置方法下DMA通信系统的平均信噪比，研究平均信噪比与波导数量$N_d$、每个微带的辐射元素数$N_e$之间的关系并分析相比松弛算法的性能提升，最后探讨非完美信道状态信息（Channel State Information，CSI）下系统的性能会如何变化。系统的平均信噪比$\gamma$定义为：
+\begin{equation}\label{eq:cdma_gamma}
+	\gamma = \mathbb{E}(\mathrm{SNR}) = 
+	\frac{P_{t}}{\sigma^2}\mathbb{E}\left(\|\bm{g}^\mathrm{T} \bm{HQ}\|^2\right),
+\end{equation}
+下面的定理提供了$\gamma$的解析表达式。
+
+\begin{theorem}\label{the:cdma_gamma}
+	假设DMA阵列和用户之间为瑞利信道，即：$\bm g \sim \mathcal{CN}(\bm 0_{N\times1}, \sigma_g^2 \bm I_N)$，在最优相位配置方法下，平均信噪比$\gamma$为：
+	\begin{equation}\label{eq:cdma_theorem_gamma}
+		\gamma = \frac{P_{t}\sigma_g^2 N_d}{16\sigma^2 N_e}\left[\pi a_1^2 + 2\pi a_1\sqrt{a_2} + (8-\pi) a_2\right],
+	\end{equation}
+	其中$a_1 = \frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}}$，$a_2 = \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}$是由波导衰减引起的求和项。
+\end{theorem}
+
+\begin{proof}
+	根据定义，系统的平均信噪比为$\gamma = \frac{P_{t}}{\sigma^2}\mathbb{E}\left(\|\bm{g}^\mathrm{T} \bm{HQ}\|^2\right)$。由于矩阵$\bm{H}$为对角矩阵且矩阵$\bm{Q}$具有块对角结构，同时各波导间的信道统计特性独立同分布，总功率增益可分解为$N_d$个独立的波导增益之和。定义单条波导的有效信道增益$Y_i = \sum_{l=1}^{N_e} g_{i,l} h_{i,l} q_{i,l}$，则有：
+	\begin{equation}
+		\gamma = \frac{P_{t} N_d}{\sigma^2} \mathbb{E}\left( |Y_i|^2 \right).
+	\end{equation}
+	将式~\eqref{eq:cdma_phi_star}代入$Y_i$，利用相位对齐条件，可得有效信道增益的模值为：
+	\begin{equation}
+		|Y_i| = \frac{1}{2} \left( \left| \sum_{l=1}^{N_e} g_{i,l} h_{i,l} \right| + \sum_{l=1}^{N_e} |g_{i,l} h_{i,l}| \right).
+	\end{equation}
+	
+	由于$g_{i,l} \sim \mathcal{CN}(0, \sigma_g^2)$，则$g_{i,l} h_{i,l}$服从复高斯分布$\mathcal{CN}(0, \sigma_g^2 |h_{i,l}|^2)$。相应的，其模值$|g_{i,l} h_{i,l}|$服从瑞利分布，其一阶矩和二阶矩分别为：
+	\begin{equation}
+		\mathbb{E}(|g_{i,l} h_{i,l}|) = \frac{\sqrt{\pi}}{2} \sigma_g |h_{i,l}|, \quad
+		\mathbb{E}(|g_{i,l} h_{i,l}|^2) = \sigma_g^2 |h_{i,l}|^2.
+	\end{equation}
+	对$|Y_i|^2$展开并求期望，有：
+	\begin{equation}\label{eq:cdma_Yi_expansion}
+		\medmath{
+		\mathbb{E}\left( |Y_i|^2 \right) = \frac{1}{4}
+		\Bigg ( \underbrace{\mathbb{E}\left[ \left| \sum_{l=1}^{N_e} g_{i,l} h_{i,l} \right|^2 \right]}_{T_1} 
+		+ 
+		\underbrace{\mathbb{E}\left[ \left( \sum_{l=1}^{N_e} |g_{i,l} h_{i,l}| \right)^2 \right]}_{T_2} 
+		+ 
+		\underbrace{2 \mathbb{E}\left[ \left| \sum_{l=1}^{N_e} g_{i,l} h_{i,l} \right| \left( \sum_{l=1}^{N_e} |g_{i,l} h_{i,l}| \right) \right]}_{T_3} \Bigg ).
+		}
+	\end{equation}
+	下面逐项计算式~\eqref{eq:cdma_Yi_expansion}中的$T_1,\;T_2,\;T_3$：对于相干叠加项$T_1$，由于$g_{i,l} h_{i,l}$为独立零均值变量，和的方差等于方差的和，有：
+	\begin{align}
+		T_1
+		&= \sum_{l=1}^{N_e} \mathbb{E}(|g_{i,l} h_{i,l}|^2) = \sigma_g^2 \sum_{l=1}^{N_e} |h_{i,l}|^2 \\
+		&= \frac{\sigma_g^2}{N_e} \sum_{l=1}^{N_e} e^{-2\alpha D (l-1)} = \frac{\sigma_g^2}{N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}.
+	\end{align}
+	对于非相干叠加项$T_2$，展开平方项并利用独立性，有：
+	\begin{align}
+		T_2 
+		&= \sum_{l=1}^{N_e} \mathbb{E}(|g_{i,l} h_{i,l}|^2) +
+		\sum_{l=1}^{N_e}\sum_{\lambda=1,\lambda \neq l}^{N_e} \mathbb{E}(|g_{i,l} h_{i,l}|) \mathbb{E}(|g_{i,\lambda} h_{i,\lambda}|) \\
+		&= \frac{\sigma_g^2}{N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}
+		+ \frac{\pi \sigma_g^2}{4} \sum_{l=1}^{N_e}\sum_{\lambda=1,\lambda \neq l}^{N_e} |h_{i,l}| |h_{i,\lambda}|.
+	\end{align}
+	利用代数恒等式$\sum_{l \neq \lambda} a_l a_\lambda = (\sum a_l)^2 - \sum a_l^2$，上式化简为：
+	\begin{equation}
+		T_2
+		= \frac{\sigma_g^2}{N_e} \left(1 - \frac{\pi}{4}\right) \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}
+		+ \frac{\pi \sigma_g^2}{4 N_e} \left(\frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}}\right)^2.
+	\end{equation}
+	对于交叉项$T_3$，由于相干项$\left| \sum g_{i,l} h_{i,l} \right|$与非相干项$\sum |g_{i,l} h_{i,l}|$均由大量独立随机变量构成，根据大数定律，当$N_e$较大时，两者之间的相关性对期望的影响较小，可以近似得出：
+	\begin{equation}
+		T_3 = 2 \cdot \mathbb{E}\left( \left| \sum_{l=1}^{N_e} g_{i,l} h_{i,l} \right| \right) \cdot \mathbb{E}\left( \sum_{l=1}^{N_e} |g_{i,l} h_{i,l}| \right),
+	\end{equation}
+	其中，变量$\sum_{l=1}^{N_e} g_{i,l} h_{i,l}$服从$\mathcal{CN}(0, \frac{\sigma_g^2}{N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}})$，其模值$|\sum_{l=1}^{N_e} g_{i,l} h_{i,l}|$的期望为$\frac{\sqrt{\pi}}{2} \sqrt{\frac{\sigma_g^2}{N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}}$。
+	因此：
+	\begin{equation}
+		T_3 =
+		\frac{\pi \sigma_g^2}{2N_e} \sqrt{\frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}} \frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}}.
+	\end{equation}
+	将$T_1,\;T_2,\;T_3$代回式~\eqref{eq:cdma_Yi_expansion}，合并同类项并整理，即得式~\eqref{eq:cdma_theorem_gamma}，证毕。
+\end{proof}
+
+定理~\ref{the:cdma_gamma}表达了平均信噪比$\gamma$与系统关键参数$N_d$、$N_e$之间的关系。波导数量$N_d$作为$\gamma$中的直接比例因子，反映了多个波导的累积增益贡献。然而，$a_1$和$a_2$均以指数形式依赖于$N_e$，且其增长趋势同时受到波导衰减系数$\alpha$的制约，系统性能随$N_e$变化的整体规律并不直观。
+为了深入探究辐射单元数量对系统性能的具体影响规律，特别是波导衰减存在时的非单调特性，需要进一步分析上述解析表达式的极值特性。
+在实际DMA系统中，单元间距通常较小，使得$\alpha D$处于低衰减区间，下面的推论揭示了在此典型场景下，平均信噪比关于$N_e$渐近行为。
+
+\begin{corollary}\label{cor:cdma_Ne_opt}
+	假设$\alpha D \ll 1$，平均信噪比$\gamma$随每条波导辐射单元数$N_e$的增加呈现先增大后减小的趋势，且满足$\lim_{N_e\to +\infty}\gamma=0$。当$\gamma$取得最大值时，单元数量$N_e^\star$满足如下近似关系：
+	\begin{equation}\label{eq:cdma_Ne_opt}
+		N_e^\star \approx \frac{1.256}{\alpha D}.
+	\end{equation}
+\end{corollary}
+
+\begin{proof}
+	对指数函数进行泰勒展开，有：$1-e^{-x} = x-\frac{x^2}{2}+\frac{x^3}{6}-\cdots$，利用假设$\alpha D \ll 1$，有如下近似：
+	\begin{equation}
+		1 - e^{-\alpha D} \approx \alpha D, \quad 1 - e^{-2\alpha D} \approx 2\alpha D.
+	\end{equation}
+	令$x = \alpha D N_e$，则$a_1$和$a_2$可以重写为关于$x$的函数：
+	\begin{equation}\label{eq:cdma_a1a2_approx}
+		a_1 \approx \frac{1 - e^{-x}}{\alpha D}, \quad a_2 \approx \frac{1 - e^{-2x}}{2\alpha D}.
+	\end{equation}
+	将式~\eqref{eq:cdma_a1a2_approx}代入式~\eqref{eq:cdma_theorem_gamma}，整理可得平均信噪比$\gamma$关于$x$的表达式：
+	\begin{equation}\label{eq:cdma_gammax_approx}
+		\gamma(x) \approx \frac{P_{t}\sigma_g^2 N_d}{16\sigma^2 x}
+		\left[ \frac{\pi(1-e^{-x})^2}{\alpha D} + \frac{2\pi(1-e^{-x})\sqrt{1-e^{-2x}}}{\sqrt{2\alpha D}} + \frac{(8-\pi)(1-e^{-2x})}{2} \right].
+	\end{equation}
+	
+	首先考察上述表达式的极限，当$N_e\to+\infty$时，即 $x \to +\infty$，中括号内的值为一常数，而$\gamma$整体仍受前置因子$1/x$的限制，因此$\lim_{N_e\to +\infty}\gamma = 0$。下面推导$\gamma(x)$的极值点，注意到在$\alpha D \ll 1$的条件下，式~\eqref{eq:cdma_gammax_approx}中方括号内的第一项起主导作用。为简化分析，考虑主导项的影响，有：
+	\begin{equation}
+		\gamma(x) \propto f(x) = \frac{(1-e^{-x})^2}{x}.
+	\end{equation}
+	等效于求解关于$f(x)$的极大值点，对$f(x)$求导并令其为0：
+	\begin{equation}
+		f'(x) = \frac{2x(1-e^{-x})e^{-x} - (1-e^{-x})^2}{x^2} = 0.
+	\end{equation}
+	化简上述方程，得到超越方程：
+	\begin{equation}
+		e^x - 2x - 1 = 0.
+	\end{equation}
+	上述方程无法用初等函数给出解析解，但可借助Lambert $W$函数进行表示并通过数值计算求解，其正根可写为：
+	\begin{equation}
+		x^\star = -\frac{1}{2} - W_{-1}\left( -\frac{1}{2\sqrt{e}} \right) \approx 1.256,
+	\end{equation}
+	其中$W_{-1}(\cdot)$表示Lambert $W$函数的第$-1$分支，证毕。
+\end{proof}
+
+推论~\ref{cor:cdma_Ne_opt}揭示了DMA系统设计中的一个重要权衡关系，即盲目地增加每个波导上的辐射单元数量$N_e$并不会带来系统性能的持续提升。对于较小的$N_e$，新增单元能够提供额外的相干增益，从而显著提高接收信噪比；然而，当$N_e$进一步增大时，波导传播损耗的累积效应逐渐占据主导，后续单元的有效贡献迅速衰减，反而导致整体信噪比下降。
+因此，在实际系统设计中，应根据波导的衰减系数$\alpha$和单元间距$D$合理选择$N_e$，以实现性能的最优化。
+
+
+\subsection{最优相位配置方法与松弛算法的性能对比}
+
+通过第~\ref{sec:cdma_best_phase_align}小节的分析可以看出，洛伦兹约束下的最优相位配置方法能够实现严格的相位对齐；相比之下，现有文献中常采用松弛方法将洛伦兹约束放松，虽然在形式上更为简洁，但不可避免地引入了相位失配，导致系统性能下降。如图~\ref{fig:cdma_relax}所示，目前的研究中常采用的松弛方法有两种，分别是直接映射松弛\cite{zhang2022beam, azarbahram2025waveform, smith2017analysisa}和欧氏投影松弛\cite{carlson2024hierarchical, boyarsky2021electronically}。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.8\linewidth]{cdma/cdma_relax.pdf}
+	\caption{目前DMA研究中常用的松弛方法}
+	\label{fig:cdma_relax}
+\end{figure}
+
+这两种方法都是对单位圆下的解进行变换得到的，单位圆约束由典型的采用单位幅度移相器的相控阵实现，此时，移相器所需设置的角度可以表示为$\theta_{i,l}=-\arg(g_{i,l} h_{i,l})$，即图中的蓝点所表示的位置。
+直接松弛映射令DMA单元的可调相位参数$\phi_{i,l}^{\text{direct}}=\theta_{i,l}$，这种方法在几何上相当于将单位圆上的解直接缩放到洛伦兹圆上，不会改变DMA元素之间的相位差，从图~\ref{fig:cdma_relax}(a)中来看，这种映射是均匀的，其延长线相交于复平面上的$(0,j)$点处。
+而对于欧氏投影松弛，其目标是在洛伦兹约束的可行域内寻找一个点$q_{i,l}$，使其与单位圆上的解$e^{j\theta_{i,l}}$在复平面上的欧氏距离最小。该问题可以表述为：
+\begin{equation}
+	\phi_{i,l}^{\text{proj}} = \mathop{\arg \min}_{\phi} \left| \frac{j+e^{j\phi}}{2} - e^{j\theta_{i,l}} \right|^2.
+\end{equation}
+从几何角度看，如图~\ref{fig:cdma_relax}(b)，欧氏投影解对应于单位圆上的最优解点与洛伦兹圆圆心$O_2$的连线与洛伦兹圆的交点。
+根据几何关系，容易得出该映射对应的相位计算公式为：
+\begin{equation}\label{eq:cdma_phi_proj}
+	\phi_{i,l}^{\text{proj}} = \operatorname{\arctan 2}(\frac{2\sin\theta_{i,l}-1}{2}, \cos\theta_{i,l}).
+\end{equation}
+为了定量刻画两种方法与最优相位配置方法之间的性能差异，有必要进一步推导这两种松弛算法下DMA系统的平均信噪比表达式，并与定理~\ref{the:cdma_gamma}中的结果进行对比分析。
+
+\begin{corollary}\label{cor:cdma_gamma_relax}
+	在直接映射松弛下，假设DMA阵列与用户之间仍服从瑞利衰落信道$\bm g \sim \mathcal{CN}(\bm 0_{N\times1}, \sigma_g^2 \bm I_N)$，则系统的平均信噪比为：
+	\begin{equation}\label{eq:cdma_gamma_relax}
+		\gamma^{\mathrm{direct}} =
+		\frac{P_{t}\sigma_g^2 N_d}{16\sigma^2 N_e}
+		\left[\pi a_1^2 + (8-\pi) a_2\right],
+	\end{equation}
+	其中 $a_1$ 和 $a_2$ 的定义与定理~\ref{the:cdma_gamma}一致。
+\end{corollary}
+
+\begin{proof}
+	在直接松弛下，DMA单元的幅度被固定为常数，而相位仅在单位圆约束下进行优化。其核心目标通常是最大化$\left| \sum_{l=1}^{N_e} g_{i,l} h_{i,l} e^{j\phi_{i,l}} \right|$，即令$\phi_{i,l}^{\mathrm{direct}} = -\arg(g_{i,l}h_{i,l})$。
+	按照与定理~\ref{the:cdma_gamma}类似的推导步骤，此时单条波导上的有效信道增益变为：
+	\begin{equation}
+		Y_i= \frac{1}{2} \Big ( \underbrace{j \sum_{l=1}^{N_e} g_{i,l} h_{i,l}}_{T_1} + \underbrace{\sum_{l=1}^{N_e} |g_{i,l} h_{i,l}|}_{T_2} \Big ).
+	\end{equation}
+	对$|Y_i|^2$展开并取期望时，需要考虑复数项$T_1$和实数项$T_2$之间的相位关系。显然$T_1$是一个复高斯随机变量，其相位$\varphi_i = \arg(T_1)$在$[0, 2\pi)$上服从均匀分布，且相对于$T_2$具有统计独立性。对$|Y_i|^2$进行展开，有：
+	\begin{equation}\label{eq:cdma_Yi2_relax}
+		|Y_i|^2 = \frac{1}{4} \left( |T_1|^2 + T_2^2 + 2|T_1|T_2 \cos\varphi_i \right).
+	\end{equation}
+	在求取期望$\mathbb{E}(|Y_i|^2)$ 时，前两项的期望对应于定理~\ref{the:cdma_gamma}证明过程中一致。由于$\mathbb{E}(\cos\varphi_i) = 0$，第三项的期望为0，因此，直接映射松弛下的平均增益仅由式~\eqref{eq:cdma_Yi2_relax}的前两项构成，可得到式~\eqref{eq:cdma_gamma_relax}，证毕。
+\end{proof}
+
+\begin{corollary}\label{cor:cdma_gamma_proj}
+	在欧氏投影松弛下，假设DMA阵列与用户之间仍服从瑞利衰落信道$\bm g \sim \mathcal{CN}(\bm 0_{N\times1}, \sigma_g^2 \bm I_N)$，则系统的平均信噪比为：
+	\begin{equation}\label{eq:cdma_gamma_proj}
+		\gamma^{\mathrm{proj}} = 
+		\frac{P_t \sigma_g^2 N_d}{16 \sigma^2 N_e} 
+		\left[ \pi \xi_2^2 (a_1^2-a_2) + 8\xi_1 a_2 \right],
+	\end{equation}
+	其中 $a_1$ 和 $a_2$ 的定义与定理~\ref{the:cdma_gamma}一致，$\xi_1$和$\xi_2$分别为欧氏投影下的能量修正因子和相位效率因子，其解析表达式如下：
+	\begin{align}
+		\xi_1 &=1 + \frac{1}{\pi} \left[ K(\frac{2\sqrt{2}}{3}) - 3 E(\frac{2\sqrt{2}}{3}) \right]\approx 0.741,\\
+		\xi_2 &= \frac{1}{2\pi} \left[ K(\frac{2\sqrt{2}}{3}) + 3 E(\frac{2\sqrt{2}}{3}) \right] \approx 0.934,
+	\end{align}
+	其中$K(\cdot)$为第一类完全椭圆积分，$E(\cdot)$为第二类完全椭圆积分。
+\end{corollary}
+
+\begin{proof}
+	在欧氏投影松弛中，相位配置依据最小化复平面距离准则，$\phi_{i,l}$ 由式~\eqref{eq:cdma_phi_proj}给出。
+	定义单条波导上第$l$个单元的有效信道增益项为$u_{i,l} = g_{i,l} h_{i,l} q_{i,l}$。记$g_{i,l} h_{i,l} = |g_{i,l} h_{i,l}| e^{-j\theta_{i,l}}$，将欧氏投影的几何关系代入$q_{i,l}$，可以求得$u_{i,l}$的实部项和虚部分别为：
+	\begin{align}
+		\Re(u_{i,l}) &= \frac{|g_{i,l} h_{i,l}|}{2} \left( \sin\theta_{i,l} + \frac{1 - 0.5\sin\theta_{i,l}}{\sqrt{1.25 - \sin\theta_{i,l}}} \right), \\
+		\Im(u_{i,l}) &= \frac{|g_{i,l} h_{i,l}|}{2} \cos\theta_{i,l}\cdot \left( 1 - \frac{0.5}{\sqrt{1.25 - \sin\theta_{i,l}}} \right).
+	\end{align}
+	单个增益项的功率$|u_{i,l}|^2=(\Re(u_{i,l}))^2+(\Im(u_{i,l}))^2$可利用上式计算为：
+	\begin{equation}
+		|u_{i,l}|^2 
+		= \frac{|g_{i,l}h_{i,l}|^2}{4} \left(2 + \frac{2\sin\theta_{i,l} - 1}{\sqrt{1.25 - \sin\theta_{i,l}}}\right).
+	\end{equation}
+	考虑单条波导的总功率增益期望$\mathbb{E}[|Y_i|^2]$，将其展开，有：
+	\begin{align}
+		\mathbb{E}[|Y_i|^2] 
+		&= \sum_{l=1}^{N_e} \mathbb{E}[|u_{i,l}|^2] + \sum_{l \neq k} \mathbb{E}[u_{i,l} u_{i,k}^*] \\
+		&\overset{\text{(a)}}{=} \sigma_g^2 \mathbb{E}[|q_{i,l}|^2] \sum_{l=1}^{N_e} |h_{i,l}|^2 
+		+ \sum_{l \neq k} \mathbb{E}[\Re(u_{i,l})] \mathbb{E}[\Re(u_{i,k})]
+		\\
+		&= 0.5\sigma_g^2 \xi_1 \sum_{l=1}^{N_e} |h_{i,l}|^2 
+		+ \frac{\pi \sigma_g^2 \xi_2^2}{16}
+		\cdot \left[ \left( \sum_{l=1}^{N_e} |h_{i,l}| \right)^2 - \sum_{l=1}^{N_e} \left(|h_{i,l}| \right)^2 \right],
+	\end{align}
+	其中(a)成立是因为$\mathbb{E}[\Im(u_{i,l})]=0$，$\xi_1$、$\xi_2$定义如下：
+	\begin{align}
+		\xi_1&=\mathbb{E}\left(1 + \frac{\sin\theta - 0.5}{\sqrt{1.25 - \sin\theta}}\right)
+		= 1+\frac{1}{2\pi}\int_{0}^{2\pi} \frac{\sin\theta - 0.5}{\sqrt{1.25 - \sin\theta}}  d\theta, \\
+		\xi_2&=\mathbb{E}\left( \sin\theta + \frac{1 - 0.5\sin\theta}{\sqrt{1.25 - \sin\theta}} \right)
+		=\frac{1}{2\pi} \int_{0}^{2\pi} \frac{1 - 0.5\sin\theta}{\sqrt{1.25 - \sin\theta}}  d\theta.
+	\end{align}
+	
+	$\xi_1$、$\xi_2$没有初等形式的解，利用代数变换可以将它们用第一类完全椭圆积分$K(k)$和第二类完全椭圆积分$E(k)$表达，利用换元法，记：
+	\begin{align}
+		\mathcal{J}_1 &= \int_{0}^{2\pi} \frac{d\theta}{\sqrt{a - \sin\theta}} = \frac{4}{\sqrt{a+1}} K\left(\sqrt{\frac{2}{a+1}}\right),\\
+		\mathcal{J}_2 &= \int_{0}^{2\pi} \sqrt{a - \sin\theta} \, d\theta = 4\sqrt{a+1} E\left(\sqrt{\frac{2}{a+1}}\right).
+	\end{align}
+	代入$a=1.25$，可得$\mathcal{J}_1=\frac{8}{3} K(\frac{2\sqrt{2}}{3}),\;\mathcal{J}_2=6 E(\frac{2\sqrt{2}}{3})$。
+	$\xi_1$、$\xi_2$可以使用$\mathcal{J}_1$、$\mathcal{J}_2$表示为：
+	\begin{equation}
+		\xi_1 = 1 + \frac{1}{2\pi}\left( \frac{3\mathcal{J}_1}{4}-\mathcal{J}_2\right) ,\quad
+		\xi_2 = \frac{1}{2\pi}\left(\frac{3}{8}\mathcal{J}_1 +\frac{1}{2}\mathcal{J}_2\right).
+	\end{equation}
+	
+	整理合并同类项，即可得到式~\eqref{eq:cdma_gamma_proj}，证毕。
+\end{proof}
+
+\begin{table}[!htbp]
+	\centering
+	\caption{三种相位配置方法的相干增益性能对比}
+	\label{tab:comparison}
+	\begin{tabular}{cccc}
+		\toprule
+		\textbf{方法} & \textbf{映射策略} & \textbf{相干增益系数} & \textbf{归一化性能} \\
+		\midrule
+		最优相位配置 & 式~\eqref{eq:cdma_phi_star} & $\pi a_1^2 + 2\pi a_1\sqrt{a_2}$ & $> 1.0$ \\
+		直接映射松弛 & $\phi = -\arg(gh)$ & $\pi a_1^2$ & $1.0$ \\
+		欧氏投影松弛 & 式~\eqref{eq:cdma_phi_proj} & $\pi \xi_2^2 a_1^2, \; (\xi_2 \approx 0.934)$ & $\approx 0.873$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+通过对比定理~\ref{the:cdma_gamma}、推论~\ref{cor:cdma_gamma_relax}和推论~\ref{cor:cdma_gamma_proj}，可以分析最优相位配置、直接映射松弛及欧氏投影松弛三种方法的性能。表~\ref{tab:comparison}提取了三种方法平均信噪比表达式中的主导项系数，并以直接映射松弛为基准进行了归一化比较。
+三种方法的平均性能满足最优相位配置$\gamma>$直接映射松弛$\gamma^{\mathrm{direct}}>$欧氏投影松弛$\gamma^{\mathrm{proj}}$。
+最优相位配置方法通过充分利用洛伦兹约束的固有偏置，保留了直接映射松弛所忽略的交叉项增益，在性能上严格优于后者。特别是在$N_e$较小时，这种相干增益在总能量中占比较大，最优配置方法的优势将更为显著。
+而欧氏投影松弛虽在几何上最小化了单元层面的映射误差，却因引入额外的相位失配导致了约$12.8\%$的功率衰减，其有效相干增益反而低于直接映射松弛。
+
+\subsection{非完美CSI下的平均信噪比分析}
+
+在实际通信场景中，受限于信道估计误差、反馈时延以及硬件不完美等因素，基站通常难以获取精确的信道状态信息。本小节基于统计信道误差模型，分析非完美CSI对所提最优相位配置方法性能的影响，并推导此时系统的平均信噪比闭式解。
+
+假设实际信道向量$\bm g$可分解为估计信道$\hat{\bm g}$与估计误差$\tilde{\bm g}$之和，即：
+\begin{equation}\label{eq:cdma_channel_model_imp}
+	\bm g = \hat{\bm g} + \tilde{\bm g},
+\end{equation}
+其中$\hat{\bm g} \sim \mathcal{CN}(\bm 0, \hat{\sigma}_g^2 \bm I_N)$，$\tilde{\bm g} \sim \mathcal{CN}(\bm 0, \tilde{\sigma}_g^2 \bm I_N)$，且二者相互独立，实际信道增益方差为$\sigma_g^2 = \hat{\sigma}_g^2 + \tilde{\sigma}_g^2$。
+
+在非完美CSI条件下，系统基于估计信道$\hat{\bm g}$设计相位配置矩阵$\bm Q(\hat{\bm g})$ 及预编码器$\bm{w}(\hat{\bm{g}})$，而接收信噪比则由实际信道$\bm g$决定。因此，系统的平均信噪比可表示为：
+\begin{equation}\label{eq:cdma_gamma_imp_def}
+	\gamma^{\mathrm{imp}} = \frac{P_{t}}{\sigma^2}\mathbb{E}(\left| \bm g^\mathrm{T} \bm H \bm Q \bm w \right|^2)
+	= \frac{P_{t}}{\sigma^2} \left[\mathbb{E}( \left| \bm{\hat{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 )
+	+ \mathbb{E}( \left| \bm{\tilde{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 )\right].
+\end{equation}
+
+上式中括号内第一项$\mathbb{E}( \left| \bm{\hat{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 )$可直接利用定理~\ref{the:cdma_gamma}的结论，只需将原表达式中的信道方差 $\sigma_g^2$替换为估计信道方差$\hat{\sigma}_g^2$，即可得到该项的表达式：
+\begin{equation}\label{eq:cdma_term1_imp}
+	\mathbb{E}( \left| \bm{\hat{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 ) = \frac{\hat{\sigma}_g^2 N_d}{16 N_e}\left[\pi a_1^2 + 2\pi a_1\sqrt{a_2} + (8-\pi) a_2\right].
+\end{equation}
+
+接下来分析第二项$\mathbb{E}( \left| \bm{\tilde{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 )$，这是一个由信道估计误差引起的干扰项。根据重期望公式$\mathbb{E}(X) = \mathbb{E}_Y[\mathbb{E}_X(X|Y)]$，通过先对$\tilde{\bm g}$求期望，再对$\hat{\bm g}$求期望，可得：
+\begin{align}\label{eq:cdma_term2_expand}
+	\mathbb{E}( \left| \bm{\tilde{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 ) &= \mathbb{E}_{\hat{\bm g}}\left[ \mathbb{E}_{\tilde{\bm g}}\left( \bm w^\mathrm{H} \bm Q^\mathrm{H} \bm H^\mathrm{H} \tilde{\bm g}^* \tilde{\bm g}^\mathrm{T} \bm H \bm Q \bm w \mid \hat{\bm g} \right) \right] \\
+	&\overset{\text{(a)}}{=} \mathbb{E}_{\hat{\bm g}}\left[ \bm w^\mathrm{H} \bm Q^\mathrm{H} \bm H^\mathrm{H} \mathbb{E}_{\tilde{\bm g}}(\tilde{\bm g}^* \tilde{\bm g}^\mathrm{T}) \bm H \bm Q \bm w \right] \\
+	&\overset{\text{(b)}}{=} \tilde{\sigma}_g^2 \mathbb{E}_{\hat{\bm g}}\left( \|\bm H \bm Q \bm w\|^2 \right),
+\end{align}
+其中(a)成立是因为在内部的期望中，$\hat{\bm g}$被视为已知，那么基于它计算出来的$\bm Q$和$\bm w$为常量矩阵，(b)成立是因为$\mathbb{E}_{\tilde{\bm g}} \left( \bm{\tilde{g}}^* \bm{\tilde{g}}^\mathrm{T} \right) = \tilde{\sigma}_g^2 \bm{I}_N$。利用矩阵$\bm H$和$\bm Q$的块对角结构，范数项可展开为：
+\begin{equation}
+	\|\bm H \bm Q \bm w\|^2 = \sum_{i=1}^{N_d} \left( |w_i|^2 \sum_{l=1}^{N_e} |h_{i,l}|^2 |q_{i,l}|^2\right).
+\end{equation}
+
+考虑到预编码向量满足功率约束$\|\bm w\|^2 = 1$，且各波导的统计特性一致，上述求和项可简化为单条波导内各单元功率增益之和，因此，其期望可写为：
+\begin{equation}\label{eq:cdma_EHQw2}
+	\mathbb{E}_{\hat{\bm g}}\left( \|\bm H \bm Q \bm w\|^2 \right) = \sum_{l=1}^{N_e} |h_{i,l}|^2 \cdot \mathbb{E}(|q_{i,l}|^2).
+\end{equation}
+对于满足洛伦兹约束的单元响应，其模平方为$|q_{i,l}|^2 = (1+\sin\phi_{i,l})/2$。由于最优相位$\phi_{i,l}$跟随随机信道相位变化，其在$[0, 2\pi)$内服从均匀分布，于是：
+\begin{equation}\label{eq:cdma_Eqil2}
+	\mathbb{E}(|q_{i,l}|^2) = \frac{1}{2}+\frac{1}{2}\mathbb{E}(\sin\phi_{i,l})
+	=\frac{1}{2}.
+\end{equation}
+结合式~\eqref{eq:cdma_hil}定义的波导衰减模型，将式~\eqref{eq:cdma_EHQw2}和式~\eqref{eq:cdma_Eqil2}代入式~\eqref{eq:cdma_term2_expand}，有：
+\begin{equation}\label{eq:cdma_term2_imp}
+	\mathbb{E}( \left| \bm{\tilde{g}}^\mathrm{T} \bm H \bm Q \bm w \right|^2 ) 
+	= \tilde{\sigma}_g^2 \sum_{l=1}^{N_e} \frac{1}{N_e} e^{-2\alpha D(l-1)} \cdot \frac{1}{2} 
+	= \frac{\tilde{\sigma}_g^2}{2N_e} \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}.
+\end{equation}
+综合式~\eqref{eq:cdma_term1_imp}与式~\eqref{eq:cdma_term2_imp}，可得非完美CSI下系统平均信噪比的闭式解，如推论~\ref{cor:cdma_gamma_imp}所示。
+
+\begin{corollary}\label{cor:cdma_gamma_imp}
+	在存在信道估计误差且满足式~\eqref{eq:cdma_channel_model_imp}所示的统计误差模型下，定义相对信道估计误差系数$\xi$为误差方差与实际信道方差之比，即：$\xi = \frac{\tilde{\sigma}_g^2}{\sigma_g^2}, \; \xi \in [0, 1]$，则DMA通信系统的平均信噪比为：
+	\begin{equation}
+		\gamma^{\mathrm{imp}} = (1-\xi)\frac{P_{t}\sigma_g^2 N_d}{16\sigma^2 N_e}\left[\pi a_1^2 + 2\pi a_1\sqrt{a_2} + (8-\pi) a_2\right] 
+		+ \xi \frac{P_t \sigma_g^2 a_2}{2 \sigma^2 N_e},
+	\end{equation}
+	其中$a_1, a_2$的定义同定理~\ref{the:cdma_gamma}。
+\end{corollary}
+
+推论~\ref{cor:cdma_gamma_imp}表明，非完美CSI下的平均信噪比由两部分组成：第一部分由估计信道的质量$\hat{\sigma}_g^2$主导，其增益随天线数量$N$的增加而显著增长，体现了DMA的波束赋形增益；第二部分由信道估计误差$\tilde{\sigma}_g^2$引起，该项不仅没有波束赋形增益，反而引入了与波导衰减有关的因子。
+权重因子由信道估计质量$\xi$决定，当$\xi \to 0$时，信道估计趋于完美，推论~\ref{cor:cdma_gamma_imp}退化为定理~\ref{the:cdma_gamma}中的完美CSI结果；当$\xi \to 1$，即完全无法估计信道时，系统性能仅剩由波导结构决定的固定功率泄露。
+值得注意的是，该误差项与波导数量$N_d$无关，这表明随着阵列规模$N_d$的增加，虽然由估计误差引起的误差项保持不变，但波束赋形增益项会随$N_d$线性增长。因此，增加波导数量可以在一定程度上弥补由CSI不完美带来的性能损失。
+
+
+\subsection{中断概率和遍历容量分析}
+
+基于前文推导的最优相位配置方法及平均信噪比闭式解，本节将进一步分析系统的可靠性与频谱效率，分别推导DMA系统的中断概率和遍历容量。为了便于后续性能指标的推导，首先需确定接收端瞬时信噪比的统计分布特性。在最优配置下，如前文所述，有效信道增益主要由 $N_d$个独立波导的增益之和构成。
+根据中心极限定理，当DMA阵列较大时，$\left| \bm g^\mathrm{T} \bm H \bm Q \bm w \right|$近似服从高斯分布，因此瞬时信噪比可近似通过伽马分布进行建模。
+设瞬时信噪比服从形状参数为$k$、尺度参数为$\theta$的伽马分布，其概率密度函数为：
+\begin{equation}\label{eq:cdma_pdf_gamma}
+	f_{\mathrm{SNR}}(x) = \frac{x^{k-1} e^{-\frac{x}{\theta}}}{\Gamma(k) \theta^k}, \quad x \geq 0,
+\end{equation}
+其中$\Gamma(\cdot)$是伽马函数。为了确定伽马分布的参数$k$和$\theta$，除了已知的一阶矩$\mathbb{E}(\mathrm{SNR})$，还需要推导信噪比的方差$\operatorname{Var}(\mathrm{SNR})$。由于各波导间是独立的，总方差为各波导信噪比方差之和，即：
+\begin{equation}\label{eq:cdma_var_snr}
+	\operatorname{Var}(\mathrm{SNR}) = \left(\frac{P_t}{\sigma^2}\right)^2 \sum_{i=1}^{N_d} \operatorname{Var}(|Y_i|^2),
+\end{equation}
+其中$Y_i$为单条波导的有效信道增益。
+
+
+在最优相位配置下，单条波导的有效信道增益模值可表示为两部分之和：$|Y_i| = \frac{1}{2} (X_1 + X_2)$，其中相干项 $X_1 = \left| \sum_{l=1}^{N_e} g_{i,l} h_{i,l} \right|$，非相干项 $X_2 = \sum_{l=1}^{N_e} |g_{i,l} h_{i,l}|$。
+首先分别分析 $X_1$ 和 $X_2$ 的统计特性。对于 $X_1$，其内部复数和服从零均值复高斯分布 $\mathcal{CN}\left(0, \frac{\sigma_g^2 a_2}{N_e}\right)$，因此 $X_1$ 服从瑞利分布，其均值和方差分别为：
+\begin{equation}
+	\mu_{X_1} = \frac{\sqrt{\pi} \sigma_g \sqrt{a_2}}{2 \sqrt{N_e}}, \quad \sigma_{X_1}^2 = \frac{(4-\pi)\sigma_g^2 a_2}{4 N_e};
+\end{equation}
+对于 $X_2$，它是大量独立瑞利随机变量之和。根据中心极限定理，当 $N_e$ 较大时，$X_2$ 渐近服从高斯分布$\mathcal{N}(\mu_{X_2}, \sigma_{X_2}^2)$，其均值和方差分别为：
+\begin{equation}
+	\mu_{X_2} = \frac{\sqrt{\pi} \sigma_g a_1}{2 \sqrt{N_e}}, \quad \sigma_{X_2}^2 = \frac{(4-\pi)\sigma_g^2 a_2}{4 N_e},
+\end{equation}
+其中$a_1 = \frac{1 - e^{-\alpha D N_e}}{1 - e^{-\alpha D}}$，$a_2 = \frac{1 - e^{-2\alpha D N_e}}{1 - e^{-2\alpha D}}$。
+
+如定理~\ref{the:cdma_gamma}证明中所述，当 $N_e$ 较大时，$X_1$ 和 $X_2$ 近似统计独立。因此，有效信道增益模值 $|Y_i| = \frac{1}{2}(X_1 + X_2)$ 的均值 $\mu_Y$ 和方差 $\sigma_Y^2$ 可直接求得：
+\begin{align}
+	\mu_Y &= \frac{1}{2}(\mu_{X_1} + \mu_{X_2}) = \frac{\sqrt{\pi} \sigma_g}{4 \sqrt{N_e}}(a_1 + \sqrt{a_2}), \\
+	\sigma_Y^2 &= \frac{1}{4}(\sigma_{X_1}^2 + \sigma_{X_2}^2) = \frac{(4-\pi)\sigma_g^2 a_2}{8 N_e}.
+\end{align}
+
+由于非相干项 $X_2$ 具有较大的均值且渐近服从高斯分布，它主导了 $|Y_i|$ 的分布形态，故可近似认为 $|Y_i|$ 渐近服从高斯分布 $\mathcal{N}(\mu_Y, \sigma_Y^2)$。
+对于服从高斯分布的幅度变量 $|Y_i|$，其平方的方差可由矩的关系导出：
+\begin{equation}\label{eq:cdma_var_Yi2}
+	\operatorname{Var}(|Y_i|^2) = 4\mu_Y^2 \sigma_Y^2 + 2\sigma_Y^4.
+\end{equation}
+将 $\mu_Y$ 和 $\sigma_Y^2$ 代入式~\eqref{eq:cdma_var_Yi2}，整理可得单条波导增益平方的方差：
+\begin{equation}
+	\operatorname{Var}(|Y_i|^2) = \frac{(4-\pi)\sigma_g^4 a_2}{32 N_e^2} \left[ \pi(a_1 + \sqrt{a_2})^2 + (4-\pi)a_2 \right].
+\end{equation}
+
+将上式代回式~\eqref{eq:cdma_var_snr}，可得系统总信噪比的方差：
+\begin{equation}\label{eq:cdma_var_snr_output}
+	\operatorname{Var}(\mathrm{SNR}) = 
+	\frac{(4-\pi) P_t^2 \sigma_g^4 N_d a_2}{32 \sigma^4 N_e^2} \left[ \pi(a_1 + \sqrt{a_2})^2 + (4-\pi)a_2 \right].
+\end{equation}
+
+结合定理~\ref{the:cdma_gamma}中推导的平均信噪比 $\mathbb{E}(\mathrm{SNR})$，利用矩匹配法，即可唯一确定伽马分布的形状参数 $k$ 和尺度参数 $\theta$ 如下：
+\begin{align}\label{eq:cdma_gamma_k_theta}
+	k &= \frac{(\mathbb{E}(\mathrm{SNR}))^2}{\operatorname{Var}(\mathrm{SNR})}
+	= \frac{N_d [\pi a_1^2 + 2\pi a_1\sqrt{a_2} + (8-\pi)a_2]^2}{8(4-\pi)a_2 \left[ \pi(a_1+\sqrt{a_2})^2 + (4-\pi)a_2 \right]}, \\
+	\theta &= \frac{\operatorname{Var}(\mathrm{SNR})}{\mathbb{E}(\mathrm{SNR})}
+	= \frac{P_t \sigma_g^2 a_2 (4-\pi) \left[ \pi(a_1+\sqrt{a_2})^2 + (4-\pi)a_2 \right]}{2 \sigma^2 N_e [\pi a_1^2 + 2\pi a_1\sqrt{a_2} + (8-\pi)a_2]}.
+\end{align}
+
+
+\subsubsection{中断概率}
+
+中断概率是衡量通信系统可靠性的重要指标，定义为瞬时SNR低于特定目标阈值$\gamma_{\text{th}}$的概率。基于上述伽马分布模型，系统的中断概率$P_{\text{out}}$可表示为：
+\begin{equation}
+	P_{\text{out}}= \operatorname{Pr}(\mathrm{SNR} < \gamma_{\text{th}}) = \int_{0}^{\gamma_{\text{th}}} f_{\mathrm{SNR}}(\gamma)\, d\gamma.
+\end{equation}
+将式~\eqref{eq:cdma_pdf_gamma}代入积分，并作变量代换$t = x/\theta$，得：
+\begin{equation}
+	P_{\text{out}} 
+	= \int_{0}^{\gamma_{\text{th}}} \frac{x^{k-1} e^{-\frac{x}{\theta}}}{\Gamma(k) \theta^k} \, dx
+	= \frac{1}{\Gamma(k)} \int_{0}^{\frac{\gamma_{\text{th}}}{\theta}} t^{k-1} e^{-t}\, dt 
+	= \frac{\gamma_{\text{inc}}\left(k, \frac{\gamma_{\text{th}}}{\theta}\right)}{\Gamma(k)},
+\end{equation}
+其中$\gamma_{\text{inc}}(s, x) = \int_0^x t^{s-1} e^{-t}\, dt$为下不完全伽马函数。考虑到$\theta = \gamma / k$，中断概率可表示为：
+\begin{equation}\label{eq:cdma_Pout_final}
+	P_{\text{out}} = \frac{\gamma_{\text{inc}}\left(k, \frac{k \gamma_{\text{th}}}{\gamma}\right)}{\Gamma(k)}.
+\end{equation}
+式~\eqref{eq:cdma_Pout_final}表明，在给定的阈值下，中断性能主要取决于平均信噪比$\gamma$（由定理~\ref{the:cdma_gamma}给出）以及反映DMA阵列固有特性的形状参数 $k$。
+
+\subsubsection{遍历容量}
+
+遍历容量表征了DMA系统的平均频谱效率，定义为瞬时互信息的期望值：
+\begin{equation}\label{eq:cdma_capacity_def}
+	C = \mathbb{E}\left[ \log_2(1 + \mathrm{SNR}) \right] = \int_{0}^{\infty} \log_2(1 + x) f_{\mathrm{SNR}}(x)\, dx.
+\end{equation}
+上式的积分难以直接求解，本小节将通过推导容量的紧致上界、高信噪比以及低信噪比下的渐近近似，来分析系统的频谱效率特性。根据Jensen不等式，可得遍历容量的上界：
+\begin{equation}
+	C \leq C^{\text{up}} = \log_2\left( 1 + \mathbb{E}(\mathrm{SNR}) \right) = \log_2(1 + \gamma).
+\end{equation}
+将定理~\ref{the:cdma_gamma}中推导的平均信噪比$\gamma$代入，可得：
+\begin{equation}
+	\label{eq:cdma_capacity_upper}C^{\text{up}} = \log_2\left( 1 + \frac{P_{t}\sigma_g^2 N_d}{16\sigma^2 N_e}\left[\pi a_1^2 + 2\pi a_1\sqrt{a_2} + (8-\pi) a_2\right] \right).
+\end{equation}
+上式表明，遍历容量上界随发射功率$P_t$对数增长。在大规模DMA系统中，由于大量辐射单元的叠加作用使得信噪比的方差相对于均值逐渐减小，该上界非常紧致，足以作为系统容量评估的有效近似。
+
+为了进一步量化参数$k$对容量的影响，下面考虑低信噪比场景和高信噪比场景下的近似。
+在低SNR区域，利用泰勒级数展开，遍历容量可近似为：
+\begin{equation}
+	C = \frac{1}{\ln 2} \mathbb{E}\left[ \ln(1 + \mathrm{SNR}) \right]
+	\approx \frac{1}{\ln 2} \left( \mathbb{E}(\mathrm{SNR}) - \frac{1}{2}\mathbb{E}(\mathrm{SNR}^2) \right).
+\end{equation}
+其中二阶矩可计算为：$\mathbb{E}(\mathrm{SNR}^2)=(\mathbb{E}(\mathrm{SNR}))^2+\operatorname{Var}(\mathrm{SNR})$。代入$\mathbb{E}(\mathrm{SNR})=\gamma$和$\operatorname{Var}(\mathrm{SNR})=\gamma^2/k$，低信噪比下的近似遍历容量为：
+\begin{equation}\label{eq:cdma_capacity_low_snr}
+	C^{\text{low}} \approx \frac{\gamma}{\ln 2} - \frac{\gamma^2}{2 \ln 2} \left( 1 + \frac{1}{k} \right).
+\end{equation}
+
+在高信噪比下，遍历容量可近似表示为：
+\begin{equation}
+	C \approx \mathbb{E}\left[ \log_2(\mathrm{SNR}) \right] = \frac{1}{\ln 2} \mathbb{E}\left[ \ln(\mathrm{SNR}) \right].
+\end{equation}
+根据伽马分布的统计特性，其对数期望为：
+\begin{equation}
+	\mathbb{E}[\ln(\mathrm{SNR})] = \psi(k) + \ln(\theta),
+\end{equation}
+其中$\psi(x) = \frac{d}{dx}\ln \Gamma(x)$为双伽马函数。整理得到高SNR下遍历容量的渐近表达式：
+\begin{equation}\label{eq:cdma_capacity_high_snr}
+	C^{\text{high}}
+	\approx \log_2(\gamma) + \frac{\psi(k) - \ln(k)}{\ln 2}.
+\end{equation}
+
+
+\section{基于RSSI的相位估计与相位对齐算法}
+
+前文分析了在完美CSI条件下的最优相位配置及其性能上限。然而，在实际部署中，DMA阵列通常包含数以百计的辐射单元，受限于硬件成本和功耗，射频链路的数量$N_d$远小于辐射单元总数$N$。在这种架构下，基带处理单元通常只能获取每条波导叠加后的等效信道信息，而难以通过传统的导频训练方案单独估计每个辐射单元的信道系数$g_{i,l}h_{i,l}$。若采用开关轮询的方式逐个估计，导频开销将随$N_e$线性增长，导致系统传输效率下降。鉴于此，本节提出一种基于接收信号强度指示的相位对齐算法。由于用户端能够容易地测量下行链路的接收功率并反馈给基站，该方法无需单独估计信道，而是利用RSSI反馈直接优化DMA相位配置，从而最大化接收信噪比。
+
+通过第~\ref{sec:cdma_opt}节的分析可知，在采用MRT预编码策略时，系统会根据各条波导的有效信道进行最大比合并，总接收功率表现为各个波导接收信号幅度的相干叠加，因此，可以分别对$N_d$个波导进行独立优化。
+不失一般性，考虑第$i$条波导，目标是通过调整该波导上$N_e$个单元的相位配置$\bm q_i$，以最大化该波导贡献的接收功率。
+令$u_{i,l} = \sqrt{P_t} g_{i,l} h_{i,l}$表示包含发射功率、空间信道和波导传播效应的复合信道增益，则第$i$条波导在用户端的接收功率可表示为：
+\begin{equation}\label{eq:cdma_rssi_power_def}
+	p(\bm{\phi}_i) = \left| \sum_{l=1}^{N_e} u_{i,l} \frac{j+e^{j\phi_{i,l}}}{2} + \eta \right|^2,
+\end{equation}
+其中$\bm{\phi}_i = [\phi_{i,1}, \cdots, \phi_{i,N_e}]^\mathrm{T}$为待优化的相位向量。由于噪声项$\eta$的存在，单次测量的功率具有随机性，但以接收功率期望最大化为目标等价于最大化有用信号功率。针对此类问题，坐标下降法提供了一种高效的求解思路。该方法通过迭代机制，将复杂的多变量联合优化问题分解为一系列单变量子问题，即在每一步迭代中仅优化一个辐射单元的相位，同时保持其余单元状态固定，从而逐步逼近最优解。为了构建该算法，首先需要分析在固定其他单元配置时，如何确定目标单元的相位，使得信号功率最大。
+
+\subsection{功率期望最大化的相位估计方法}
+
+本小节考虑对第$i$条波导上第$\lambda$个单元的相位进行优化。固定除第$\lambda$单元以外的所有其他单元的相位$\{\phi_{i,l}\}_{l \neq \lambda}$，仅将当前单元的相位$\phi_{i,\lambda}$视为变量。
+对式~\eqref{eq:cdma_rssi_power_def}中的可变量与不变量进行分离，令$T_1 =j\frac{u_{i,\lambda}}{2} + \sum_{l\neq \lambda} u_{i,l} \frac{j+e^{j\phi_{i,l}}}{2}, \; T_2=\frac{u_{i,\lambda}}{2}$，接收功率可表示为$p(\phi_{i,\lambda})=\left| T_1+T_2 e^{j\phi_{i,\lambda}}+\eta \right|^2 $。利用噪声$\eta \sim \mathcal{CN}(0, \sigma^2)$的统计特性，接收功率的期望可推导为：
+\begin{align}
+	\mathbb{E}[p(\phi_{i,\lambda})] &= |T_1 + T_2 e^{j\phi_{i,\lambda}}|^2 + \sigma^2 \\
+	&=|T_1|^2 + |T_2|^2 + \sigma^2 +  2|T_1||T_2| \cos(\phi_{i,\lambda} - \psi),\label{eq:cdma_expected_power}
+\end{align}
+其中$\psi = \arg(T_1 T_2^*)$。式~\eqref{eq:cdma_expected_power}表明，功率的统计期望关于相位$\phi_{i,\lambda}$遵循周期为$2\pi$的余弦规律，$\phi_{i,\lambda}=\psi$为使得期望功率最大化的相位。因此，相位优化问题为一个余弦波参数估计问题：即通过有限次的含噪功率测量，估计出相位参数$\psi$。
+
+为便于参数估计，将式~\eqref{eq:cdma_expected_power}展开为如下线性回归模型：
+\begin{equation}\label{eq:cdma_linear_model}
+	\mathbb{E}[p(\phi)] = x_0 + x_1 \cos\phi + x_2 \sin\phi,
+\end{equation}
+其中待估参数定义为$x_0 = |T_1|^2 + |T_2|^2 + \sigma^2$，$x_1 = 2|T_1||T_2| \cos\psi$，$x_2 = 2|T_1||T_2| \sin\psi$。
+一旦获得参数$x_1$和$x_2$的可靠估计，目标相位即可由$\psi = \operatorname{atan2}(x_2, x_1)$确定。
+
+为了从含噪观测中准确恢复上述参数，首先需要确定合适的相位采样策略。假设在区间$[0, 2\pi)$内选取$M$个相位采样点$\{\varphi_1, \varphi_2, \cdots, \varphi_M\}$，并测量对应的接收功率。根据式~\eqref{eq:cdma_linear_model}，测量过程可建模为如下线性观测方程：
+\begin{equation}\label{eq:cdma_bmp}
+	\bm{p} = \bm{A} \bm{x} + \bm{\epsilon},
+\end{equation}
+其中$\bm p=[p_1,\ldots,p_M]^\mathrm{T}$为观测向量，$\bm x=[x_0,x_1,x_2]^\mathrm{T}$为参数向量，$\bm\epsilon\in\mathbb{R}^{M\times 1}$是由噪声 $\eta$引起的测量误差，满足$E(\boldsymbol{\epsilon}) = \mathbf{0}$，可近似认为$\operatorname{Cov}(\boldsymbol{\epsilon})=\sigma_\epsilon^2\bm I$，$\bm A\in\mathbb{R}^{M\times 3}$为观测矩阵，其具体形式为：
+\begin{equation}
+	\bm A=
+	\begin{bmatrix}
+		1      & \cos\varphi_1 & \sin\varphi_1 \\
+		\vdots & \vdots        & \vdots        \\
+		1      & \cos\varphi_M & \sin\varphi_M
+	\end{bmatrix}.
+\end{equation}
+
+根据最小二乘法，估计量的形式为：
+\begin{equation}
+	\hat{\bm{x}}
+	= \mathop{\arg\min}_{\bm x} \|\bm{p} - \bm{A}{\bm{x}}\|^2
+	= (\bm{A}^\mathrm{T} \bm{A})^{-1} \bm{A}^\mathrm{T} \bm{p}.
+\end{equation}
+代入式~\eqref{eq:cdma_bmp}，可得：
+\begin{align}
+	\hat{\bm{x}} 
+	&= (\bm{A}^{\mathrm{T}} \bm{A})^{-1} \bm{A}^{\mathrm{T}} (\bm{A} \bm{x} + \bm{\epsilon}) \\
+	&= (\bm{A}^{\mathrm{T}} \bm{A})^{-1} (\bm{A}^{\mathrm{T}} \bm{A}) \bm{x}
+	+ (\bm{A}^{\mathrm{T}} \bm{A})^{-1} \bm{A}^{\mathrm{T}} \bm{\epsilon} = \bm{x} + (\bm{A}^{\mathrm{T}} \bm{A})^{-1} \bm{A}^{\mathrm{T}} \bm{\epsilon}.
+\end{align}
+
+这说明估计量$\hat{\bm x}$是无偏估计，记$\bm A^\dagger = (\bm{A}^{\mathrm{T}} \bm{A})^{-1} \bm{A}^{\mathrm{T}}$，则$\hat{\bm x}$的协方差矩阵计算为：
+\begin{align}
+	\operatorname{Cov}(\hat{\bm x})
+	&= \mathbb{E}[(\hat{\bm x} - \mathbb{E}(\hat{\bm x}))(\hat{\bm x}- \mathbb{E}(\hat{\bm x}))^{\mathrm{T}}] 
+	= \mathbb{E}\!\left[(\bm A^\dagger \bm\epsilon)(\bm A^\dagger \bm\epsilon)^{\mathrm T}\right] \\
+	&= \operatorname{Cov}(\bm A^\dagger \bm\epsilon)
+	=\bm A^\dagger \operatorname{Cov}(\bm\epsilon)(\bm A^\dagger)^{\mathrm T}
+	= \sigma_\epsilon^2 \bm A^\dagger (\bm A^\dagger)^{\mathrm T},
+\end{align}
+式中$\bm A^\dagger (\bm A^\dagger)^{\mathrm T}$可计算为：
+\begin{equation}
+	\bm A^\dagger(\bm A^\dagger)^{\mathrm T}
+	= (\bm A^{\mathrm T}\bm A)^{-1}\bm A^{\mathrm T}\bm A(\bm A^{\mathrm T}\bm A)^{-1}
+	= (\bm A^{\mathrm T}\bm A)^{-1}.
+\end{equation}
+
+进一步地，定义估计均方误差为：
+\begin{equation}
+	\mathrm{MSE}(\hat{\bm x})
+	= \mathbb{E}\!\left[\|\hat{\bm x}-\bm x\|^2\right]
+	= \operatorname{tr}\!\left(\operatorname{Cov}(\hat{\bm x})\right)
+	= \sigma_\epsilon^2 \operatorname{tr}\!\left((\bm A^{\mathrm T}\bm A)^{-1}\right).
+\end{equation}
+由此可见，在噪声方差固定的情况下，最小化参数估计的均方误差可表述为：
+\begin{equation}
+	\min_{\{\varphi_m\}} \operatorname{tr}\!\left((\bm A^{\mathrm T}\bm A)^{-1}\right), \quad \text{s.t.} \quad \varphi_m \in [0, 2\pi),\;\forall m. 
+\end{equation}
+
+计算一般形式下的信息矩阵 $\bm{F} = \bm{A}^\mathrm{T} \bm{A}$如下：
+\begin{equation}
+	\bm F = 
+	\begin{bmatrix}
+		M & \sum_{m=1}^M \cos\varphi_m & \sum_{m=1}^M \sin\varphi_m \\
+		\sum_{m=1}^M \cos\varphi_m & \sum_{m=1}^M \cos^2\varphi_m & \sum_{m=1}^M \cos\varphi_m \sin\varphi_m \\
+		\sum_{m=1}^M \sin\varphi_m & \sum_{m=1}^M \cos\varphi_m \sin\varphi_m & \sum_{m=1}^M \sin^2\varphi_m
+	\end{bmatrix}.
+\end{equation}
+为方便后续分析，将矩阵$\bm{F}$进行分块表示如下：
+\begin{equation}
+	\bm F = 
+	\begin{bmatrix}
+		F_{11} & \bm f_{12}^{\mathrm T} \\
+		\bm f_{12} & \bm F_{22}
+	\end{bmatrix},
+\end{equation}
+其中：
+\begin{equation}
+	F_{11} = M,\;
+	\bm f_{12} = \begin{bmatrix} \sum \cos\varphi_m \\ \sum \sin\varphi_m \end{bmatrix},\;
+	\bm F_{22} = \begin{bmatrix} \sum \cos^2\varphi_m & \sum \cos\varphi_m \sin\varphi_m \\ \sum \cos\varphi_m \sin\varphi_m & \sum \sin^2\varphi_m \end{bmatrix}.
+\end{equation}
+定义$\bm{F}_{22}$在矩阵$\bm{F}$中的Schur补为$S = F_{11} - \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \bm{f}_{12}$，利用分块矩阵求逆公式，矩阵$\bm{F}$的逆可表示为：
+\begin{equation}
+	\bm{F}^{-1} =
+	\begin{bmatrix}
+		S^{-1} & -S^{-1} \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \\
+		-\bm{F}_{22}^{-1}  \bm{f}_{12} S^{-1} & \bm{F}_{22}^{-1} + \bm{F}_{22}^{-1} \bm{f}_{12} S^{-1} \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1}
+	\end{bmatrix}.
+\end{equation}
+于是，$\operatorname{tr}(\bm F^{-1})$可计算为：
+\begin{align}
+	\operatorname{tr}(\bm{F}^{-1}) &= S^{-1} + \operatorname{tr}\!\left( \bm{F}_{22}^{-1} + \bm{F}_{22}^{-1} \bm{f}_{12} S^{-1} \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \right) \\
+	&= \frac{1}{S} + \operatorname{tr}(\bm{F}_{22}^{-1}) + \frac{1}{S} \operatorname{tr}\!\left( \bm{F}_{22}^{-1} \bm{f}_{12} \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \right). \label{eq:cdma_trFni}
+\end{align}
+利用迹的交换性质$\operatorname{tr}(\bm A \bm B) = \operatorname{tr}(\bm B \bm A)$，上式中的第三项可重写为二次型形式：
+\begin{equation}
+	\operatorname{tr}\!\left( \bm{F}_{22}^{-1} \bm{f}_{12} \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \right)= \bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \bm{F}_{22}^{-1} \bm{f}_{12}= \| \bm{F}_{22}^{-1} \bm{f}_{12} \|^2.
+\end{equation}
+
+为了最小化MSE，分别考察式~\eqref{eq:cdma_trFni}中的各项：对于$S$，由于$\bm{F}_{22}$是正定矩阵，二次型$\bm{f}_{12}^{\mathrm{T}} \bm{F}_{22}^{-1} \bm{f}_{12} \ge 0$，
+所以 $S \le F_{11}$，当且仅当 $\bm{f}_{12} = \mathbf{0}$ 时，$S$ 取最大值 $M$，从而使得第一项 $1/S$ 取得最小值 $1/M$；对于$\| \bm{F}_{22}^{-1} \bm{f}_{12} \|^2$，由于范数非负，当且仅当$\bm{f}_{12} = \mathbf{0}$时，范数为$0$。这表明最优采样策略必须满足一阶矩为零的中心化条件，在这一条件下，矩阵$\bm F$为分块对角矩阵，目标问题转化为最小化$\bm{F}_{22}$的逆矩阵的迹，即：
+\begin{equation}
+	\min_{\bm{F}_{22}} \operatorname{tr}(\bm F_{22}^{-1}), \quad 
+	\text{s.t.} \quad \operatorname{tr}(\bm{F}_{22}) = M, \; \bm{F}_{22} \succ 0.
+\end{equation}
+记矩阵$\bm F_{22}$的两个特征值为$\mu_1, \mu_2$，由基本不等式：
+\begin{equation}
+	\operatorname{tr}(\bm{F}_{22}^{-1}) = 
+	\frac{1}{\mu_1}+\frac{1}{\mu_2}
+	\ge \frac{4}{\mu_1 + \mu_2} = \frac{4}{M},
+\end{equation}
+当且仅当$\mu_1= \mu_2= M/2$时取等号。对于实对称矩阵，特征值相等意味着$\bm F_{22}$满足：
+\begin{equation}
+	\bm F_{22} = 
+	\begin{bmatrix}
+		\frac{M}{2} & 0 \\ 0 & \frac{M}{2}
+	\end{bmatrix}.
+\end{equation}
+
+将$\bm f_{12}$、$\bm F_{22}$的结果和$\bm F$的定义元素一一对应，可以得到关于$\{\varphi_m\}$方程组：
+\begin{equation}
+	\begin{cases}
+		\displaystyle \sum_{m=1}^{M} \cos \varphi_m = \sum_{m=1}^{M} \sin \varphi_m = 0, \\
+		\displaystyle \sum_{m=1}^{M} \cos \varphi_m \sin \varphi_m = 0, \\
+		\displaystyle \sum_{m=1}^{M} \cos^2 \varphi_m = \sum_{m=1}^{M} \sin^2 \varphi_m = \dfrac{M}{2}.
+	\end{cases}
+\end{equation}
+容易验证在$[0,2\pi)$上的均匀采样满足上述方程组所有条件，取：
+\begin{equation}
+	\varphi_m = \frac{2\pi(m-1)}{M}, \quad m=1, 2, \cdots, M.
+\end{equation}
+此时估计量$\hat{\bm x}$的最小均方误差为：
+\begin{equation}
+	\mathrm{MSE}_{\min} (\hat{\bm x})
+	= \sigma_\epsilon^2(\frac{1}{M} + \frac{1}{M/2} + \frac{1}{M/2})
+	= \frac{5\sigma_\epsilon^2}{M}.
+\end{equation}
+
+上述分析给出了中间参数$\bm{x}$的最优估计，但实际波束赋形应用中更关注的是相位参数 $\psi$ 的估计精度。
+相位估计量 $\hat{\psi}$ 与线性参数估计量 $\hat{x}_1, \hat{x}_2$ 之间存在非线性映射关系 $\hat{\psi} = \operatorname{atan2}(\hat{x}_2, \hat{x}_1)$。为了分析 $\hat{\psi}$ 的均方误差，在真值 $(x_1, x_2)$ 处对 $\hat{\psi}$ 进行一阶泰勒展开：
+\begin{equation}
+	\hat{\psi} \approx 
+	\psi + \frac{\partial \psi}{\partial x_1} (\hat{x}_1 - x_1) + \frac{\partial \psi}{\partial x_2} (\hat{x}_2 - x_2),
+\end{equation}
+其中各项偏导数计算如下：
+\begin{equation}
+	\frac{\partial \psi}{\partial x_1} = \frac{-x_2}{x_1^2 + x_2^2}, \quad\frac{\partial \psi}{\partial x_2} = \frac{x_1}{x_1^2 + x_2^2}.
+\end{equation}
+
+在高信噪比条件下，基于该线性化近似，相位估计的均方误差可表示为：
+\begin{align}
+	\operatorname{MSE}(\hat{\psi})
+	&= \mathbb{E}[|\hat{\psi} - \psi|^2]
+	\approx \mathbb{E}\left[ \left| \nabla\psi^{\mathrm{T}} (\hat{\bm{x}}_{1,2} - \bm{x}_{1,2}) \right|^2 \right] \\
+	&= \nabla\psi^{\mathrm{T}} \operatorname{Cov}(\hat{\bm{x}}_{1,2}) \nabla\psi,\label{eq:cdma_mse_psi_general}
+\end{align}
+其中 $\nabla \psi = [\frac{\partial \psi}{\partial x_1}, \frac{\partial \psi}{\partial x_2}]^{\mathrm{T}}$ 为梯度向量，$\operatorname{Cov}(\hat{\bm{x}}_{1,2})$ 为参数 $\hat{x}_1$ 和 $\hat{x}_2$ 的协方差子矩阵。
+在前文推导的均匀采样策略下，观测矩阵满足正交性条件，此时协方差矩阵 $\operatorname{Cov}(\hat{\bm x})$ 为对角阵，因此有：$\operatorname{Cov}(\hat{\bm{x}}_{1,2}) =\frac{2\sigma_\epsilon^2}{M} \bm{I}$。将此结果代入式~\eqref{eq:cdma_mse_psi_general}，可得：
+\begin{align}
+	\operatorname{MSE}(\hat{\psi})&\approx \frac{2\sigma_\epsilon^2}{M} \nabla\psi^{\mathrm{T}} \bm{I} \nabla\psi= \frac{2\sigma_\epsilon^2}{M} \|\nabla\psi\|^2 \\
+	&= \frac{2\sigma_\epsilon^2}{M} \cdot \frac{x_1^2 + x_2^2}{(x_1^2 + x_2^2)^2}= \frac{2\sigma_\epsilon^2}{M(x_1^2 + x_2^2)}.
+\end{align}
+代入$x_1 = 2|T_1||T_2| \cos\psi$ 与 $x_2 = 2|T_1||T_2| \sin\psi$，可得均匀采样下的相位估计量$\hat{\psi}$的均方误差为：
+\begin{equation}
+	\operatorname{MSE}_{\min}(\hat{\psi}) = \frac{\sigma_\epsilon^2}{2 M |T_1|^2 |T_2|^2}.
+\end{equation}
+
+由以上分析可知，均匀采样不仅最小化了$\hat{\bm x}$的均方误差，同时也使得相位参数 $\hat{\psi}$ 的均方误差最小。
+这是由于在均匀采样下$\bm f_{12} = \mathbf{0}$，消除了直流参数$\hat{x}_0$ 与正余弦参数 $\hat{x}_1, \hat{x}_2$ 之间的估计耦合，避免了误差传递。同时，均匀采样使得$\bm F_{22}$的特征值相等，这保证了 $\hat{x}_1$ 和 $\hat{x}_2$ 具有相同的估计精度，此时合成角度的不确定度最小。由于参数估计问题完全解耦，$\hat{\bm x}$ 存在简洁的闭式解：
+\begin{equation}\label{eq:cdma_hatbmx}
+	\begin{cases}
+		\hat{x}_0 = \dfrac{1}{M} \displaystyle\sum_{m=1}^{M} p_m, \\
+		\hat{x}_1 = \dfrac{2}{M} \displaystyle\sum_{m=1}^{M} p_m \cos\left(\dfrac{2\pi (m-1)}{M}\right), \\
+		\hat{x}_2 = \dfrac{2}{M} \displaystyle\sum_{m=1}^{M} p_m \sin\left(\dfrac{2\pi (m-1)}{M}\right).
+	\end{cases}
+\end{equation}
+因此，最优相位 $\hat{\psi}$ 可通过下式快速计算：
+\begin{equation}\label{eq:cdma_hatpsi}
+	\hat{\psi} = \operatorname{atan2}(\hat{x}_2, \hat{x}_1) = \arg\left( \sum_{m=1}^{M} p_m e^{j \frac{2\pi (m-1)}{M}} \right).
+\end{equation}
+
+\subsection{基于RSSI的逐元素坐标下降算法}
+
+将上述针对单个单元的相位估计方法推广至整个DMA阵列，本节提出一种基于RSSI的逐元素坐标下降算法。该算法对 $N_d$ 条波导分别进行独立优化，核心思想是迭代优化进行坐标下降。具体而言，首先将所有 DMA 单元的相位系数 $\phi_{i,l}$ 初始化为 $0$，
+然后对每条波导执行$K$次迭代循环。
+在单次循环中，依次遍历该波导上的 $N_e$ 个辐射单元。
+当轮询到第 $l$ 个单元时，保持其他 $N_e-1$ 个单元的相位不变，在 $[0, 2\pi)$ 周期内对该单元进行 $M$ 次均匀相移并测量对应的 RSSI。根据测量结果，利用前述闭式解计算出使当前总功率最大的最佳相位 $\hat{\psi}$，并立即更新该单元的相位 $\phi_{i,l}$为$\hat{\psi}$，随后进入下一个单元的优化。
+RECD算法的具体流程如算法~\ref{alg:cdma_phase_alignment}所示。
+
+\begin{algorithm}[!t]
+	\caption{基于RSSI的逐元素坐标下降算法（RECD）}
+	\label{alg:cdma_phase_alignment}
+	\begin{algorithmic}[1]
+		\REQUIRE 波导数量 $N_d$，单元数 $N_e$，采样点数 $M$，迭代次数 $K$，功率向量$\bm p$。
+		\ENSURE 优化后的DMA配置矩阵$\bm{Q} \in \mathbb{C}^{N \times N_d}$。
+		\STATE 初始化DMA配置矩阵$\bm{Q}$，将所有相位初始化为0；
+		\FOR{波导索引 $i = 1,\cdots,N_d$}
+		\FOR{迭代次数 $k = 1,\cdots,K$}
+		\FOR{单元索引 $l = 1,\cdots,N_e$}
+		\STATE 依次设置$\phi_{i,l} \in \{0, \frac{2\pi}{M}, \dots, \frac{2\pi(M-1)}{M}\}$，测量 $M$ 个接收功率值得到向量 $\bm p$；
+		\STATE 根据式~\eqref{eq:cdma_hatbmx}计算参数$\hat{x}_1,\hat{x}_2$；
+		\STATE 根据式~\eqref{eq:cdma_hatpsi}计算最优目标相位$\hat{\psi} = \operatorname{atan2}(\hat{x}_2, \hat{x}_1)$；
+		\STATE 更新当前单元相位$\phi_{i,l} \leftarrow \hat{\psi},\;[\bm Q]_{(i-1)N_e+l,i}\leftarrow (j+e^{j\phi_{i,l}})/2$；
+		\ENDFOR
+		\ENDFOR
+		\ENDFOR
+		\RETURN DMA配置矩阵$\bm{Q}$。
+	\end{algorithmic}
+\end{algorithm}
+
+RECD算法的计算复杂度主要取决于波导数量$N_d$、单元数量$N_e$以及迭代次数$K$。
+其中，内部的参数估计步骤仅涉及简单的加权求和与三角函数运算，计算开销极低。算法的主要开销在于测量过程中的导频传输与反馈，完成一次完成的优化所需的总测量次数为$T_{\text{meas}} = N_d \times N_e \times K \times M$。
+尽管由于DMA单元数量巨大，测量开销随DMA单元数量呈线性增长，但在实际应用中，得益于坐标下降法在相位优化问题上的快速收敛特性，通常仅需极少的迭代次数（如 $K=2 \sim 3$）即可达到收敛；同时，在噪声较低时，每个单元仅需少量的采样点（如 $M=3 \sim 4$）即可实现高精度的参数估计，从而在保证波束赋形增益的同时，将系统整体导频与反馈开销控制在可接受的范围内。
+下面的定理总结了RECD算法的收敛性质。
+
+\begin{theorem}\label{the:cdma_recd_convergence}
+	在无噪声环境下，随着迭代次数$K \to \infty$，由RECD算法生成的相位配置所对应的接收功率单调递增，且该相位配置矩阵$\bm{Q}$渐进收敛于定理~\ref{the:cdma_Qstar}给出的最优解$\bm{Q}^\star$。
+\end{theorem}
+
+\begin{proof}
+	定义第$i$条波导的有效信道增益的模为$f(\bm{\phi}_i) = |\sum_{l=1}^{N_e} u_{i,l} (j+e^{j\phi_{i,l}})/2|$。
+	在算法的每一步更新中，针对特定变量$\phi_{i,l}$的优化本质上是寻找使$f(\bm{\phi}_i)$最大化的相位值$\hat{\psi}$，因此，对于任意迭代步数$t$，有 $f(\bm{\phi}_i^{(t+1)}) \ge f(\bm{\phi}_i^{(t)})$。
+	显然目标函数有上界，故序列 $\{f(\bm{\phi}_i^{(t)})\}$ 一定收敛。
+	接着证明RECD算法收敛于信道增益最大值处，
+	当算法收敛时，迭代不再改变$\bm{\phi}_i$的值，这说明任意单元的相位均已调整至相对于其余单元之和的最优位置，进一步有：
+	\begin{equation}
+		\arg(u_{i,1}e^{j\phi_{i,1}})=\cdots=\arg(u_{i,N_e}e^{j\phi_{i,N_e}})=\arg\left(j\sum_{l=1}^{N_e}u_{i,l}\right),
+	\end{equation}
+	即所有加权信道分量与背景分量同向。
+	此时，各分量实现完全的相干叠加，该结果与定理~\ref{the:cdma_Qstar}中通过代数推导得出的的全局最优解$\bm{Q}^\star$一致，证毕。
+\end{proof}
+
+
+\subsection{基于RSSI的非迭代逐元素相位对齐算法}
+
+尽管前述RECD算法能够通过迭代方式收敛至最优解，但其需要多轮循环进行逼近，为了进一步降低测量开销，本小节提出一种基于RSSI的非迭代逐元素相位对齐算法。该算法通过剔除测量过程中的自干扰偏差，仅需对每个单元进行一次估计即可直接计算出全局最优相位配置。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.5\linewidth]{cdma/cdma_phase_alignment}
+	\caption{$T_1$、$T_2$与$T_{\text{ref}}$的几何关系图}
+	\label{fig:cdma_phase_alignment}
+\end{figure}
+
+如图~\ref{fig:cdma_phase_alignment}所示，在RECD算法的单步优化中，目标相位$\psi = \arg(T_1 T_2^*)$旨在将当前单元信号 $T_2 e^{j\phi_{i,\lambda}}$ 对齐到背景矢量 $T_1$ 上。
+然而，$T_1$ 的定义中包含了除当前单元外的其余单元贡献，在优化的过程中，$T_1$会随着目标单元的不同而变化。
+若要实现非迭代求解，关键在于建立一个独立于当前单元状态的统一参考。观察式~\eqref{eq:cdma_phi_star}可以发现，最终的有效信道增益的方向与所有单元的相移为$\pi/2$时的方向是一致的。
+定义所有单元相位均为 $\pi/2$ 时的全局参考信号为 $T_{\text{ref}} = j \sum_{l=1}^{N_e} u_{i,l}$，目标是求解当前单元信号$T_2$与$T_{\text{ref}}$的夹角$\psi_\lambda=\arg(T_{\text{ref}}T_2^*)$。
+根据几何关系，有：
+\begin{equation}\label{eq:TrefT2*}
+	T_{\text{ref}}T_2^* = (T_1+jT_2)T_2^*=T_1 T_2^* + j|T_2|^2.
+\end{equation}
+回顾式~\eqref{eq:cdma_linear_model}中的线性回归模型，有$T_1 T_2^*=\frac{1}{2}(x_1 + j x_2)$，代入上式并对其取模的平方，可得：
+\begin{equation}
+	|T_{\text{ref}}|^2|T_2|^2 =\frac{1}{4}(x_1^2+x_2^2)+x_2|T_2|^2+|T_2|^4,
+\end{equation}
+其中$|T_{\text{ref}}|^2 = |T_1+jT_2|^2=x_0+x_2-\sigma^2$，代入整理可得关于$|T_2|^2$的一元二次方程：
+\begin{equation}
+	|T_2|^4-(x_0-\sigma^2)|T_2|^2+\frac{1}{4}(x_1^2+x_2^2)=0.
+\end{equation}
+
+通常情况下，$|T_2|<|T_1|$，求解上述方程并取符合物理意义的较小正实根，有：
+\begin{equation}
+	|T_2|^2=\frac{x_0-\sigma^2-\sqrt{(x_0-\sigma^2)^2 - (x_1^2 + x_2^2)}}{2}.
+\end{equation}
+利用该能量值对观测矢量进行自干扰剔除，代入式~\eqref{eq:TrefT2*}，可得：
+\begin{equation}
+	T_{\text{ref}}T_2^* =\frac{x_1}{2}+
+	\frac{j\left( x_0+x_2-\sigma^2-\sqrt{(x_0-\sigma^2)^2 - (x_1^2 + x_2^2)}\right) }{2}.
+\end{equation}
+于是，当前单元信号$T_2$与$T_{\text{ref}}$的夹角可以估计为：
+\begin{equation}\label{eq:cdma_hat_psi_lambda}
+	\hat{\psi}_\lambda = \operatorname{atan2}\left(\hat x_0 +\hat x_2 - \sigma^2 - \sqrt{(\hat x_0 - \sigma^2)^2 - ( \hat x_1^2 +\hat x_2^2)},\; \hat x_1 \right).
+\end{equation}
+该解析式表明，最优相位配置完全由三个估计参数$(\hat x_0, \hat x_1, \hat x_2)$及噪声方差$\sigma^2$决定。基于上述推导，NI-REPA算法的执行流程如算法~\ref{alg:cdma_ni_repa}所示，执行一次算法的总测量次数为$T_{\text{meas}} = N_d \times N_e \times M$，这意味着在同等采样精度下，NI-REPA的导频开销仅为RECD算法的$1/K$，有效提升了波束赋形的配置效率。
+
+\begin{algorithm}[!t]
+	\caption{基于RSSI的非迭代逐元素相位对齐算法（NI-REPA）}
+	\label{alg:cdma_ni_repa}
+	\begin{algorithmic}[1]
+		\REQUIRE 波导数量 $N_d$，单元数 $N_e$，采样点数 $M$，噪声方差 $\sigma^2$。
+		\ENSURE 优化后的DMA配置矩阵$\bm{Q}$。
+		\FOR{波导索引 $i = 1,\cdots,N_d$}
+		\FOR{单元索引 $l = 1,\cdots,N_e$}
+		\STATE 保持除 $l$ 外其余单元的相位为 $\pi/2$，依次设置 $\phi_{i,l} \in \{0, \frac{2\pi}{M}, \dots, \frac{2\pi(M-1)}{M}\}$，测量 $M$ 个接收功率值得到向量 $\bm p$；
+		\STATE 根据式~\eqref{eq:cdma_hatbmx}计算中间参数 $\hat{x}_0, \hat{x}_1, \hat{x}_2$；
+		\STATE 根据式~\eqref{eq:cdma_hat_psi_lambda}计算当前单元相对于全局参考的最优相位 $\hat{\psi}_l$；
+		\ENDFOR
+		\FOR{单元索引 $l = 1,\cdots,N_e$}
+		\STATE 更新单元相位$\phi_{i,l} \leftarrow \hat{\psi}_l,\;[\bm Q]_{(i-1)N_e+l,i}\leftarrow (j+e^{j\phi_{i,l}})/2$；
+		\ENDFOR
+		\ENDFOR
+		\RETURN DMA配置矩阵$\bm{Q}$。
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+\section{数值仿真分析}
+
+
+
+\section{本章小结}
+
+\textcolor{red}{之后再写}
+

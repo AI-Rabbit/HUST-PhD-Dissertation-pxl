@@ -1,0 +1,399 @@
+\chapter{可重构智能表面自适应波束赋形算法与原型系统实测}\label{ch:ris}
+
+\section{引言}
+
+\textcolor{red}{内容构思：简述RIS在6G中的重要地位（低功耗、低成本重塑信道）。点出现有大量RIS波束赋形算法依赖理想信道状态信息（CSI），但在实际原型系统中，信道估计开销巨大且硬件仅支持离散（如1-bit）相移。引出本章的动机：设计不依赖显式CSI估计、基于接收功率反馈的实用型自适应波束赋形算法（GFB与ASG），并自主研制大规模RIS原型系统，通过仿真与多场景实测验证其性能。}
+
+\section{系统模型}
+
+本章考虑一个由可重构智能表面辅助的单输入单输出下行无线通信系统。如图~\ref{fig:ris_structure}所示，该系统包含一个配备单天线的基站、一个单天线用户，以及在两者之间部署的 RIS。该 RIS 由 $N$ 个无源反射单元构成，并连接一个智能控制器。控制器一方面可调节各反射单元的相移，另一方面能够通过专用有线或无线通信链路，接收来自用户端的参考信号接收功率反馈信息。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.5\linewidth]{ris/ris_structure.pdf}
+	\caption{RIS 辅助的下行无线通信系统模型}
+	\label{fig:ris_structure}
+\end{figure}
+
+假设系统处于典型的低速移动场景，信道表现为窄带准静态衰落。根据图~\ref{fig:ris_structure}，令 $h_d \in \mathbb{C}$ 表示基站到用户的直射信道，$\bm{h}_\mathrm{BR} \in \mathbb{C}^{N \times 1}$ 和 $\bm{h}_\mathrm{UR} \in \mathbb{C}^{N \times 1}$ 分别表示从基站到 RIS，以及从 RIS到用户的信道向量。定义 RIS 面板的反射系数向量为 $\bm{\phi} = [\phi_1, \dots, \phi_N]^T \in \mathbb{C}^{N \times 1}$，其中 $\phi_n = e^{j\theta_n}$ 为第 $n$ 个反射单元的反射系数，$\theta_n$ 为对应的相移。考虑到实际硬件的控制精度，相移 $\theta_n$ 通常被限制在一个离散的有限集合中取值。假设每个相移由 $b$ 比特进行均匀量化，则其可取的离散值间隔为 $\Delta\theta = 2\pi / 2^b$。
+
+为简化表达，定义 $\bm{h}_r \in \mathbb{C}^{N \times 1}$ 为基站经由 RIS 到达用户的等效级联信道，即 $\bm{h}_r = \text{diag}(\bm{h}_\mathrm{UR})\bm{h}_\mathrm{BR}$。此时，基站到用户的信道由直射路径与级联反射路径叠加而成，用户端接收到的基带信号 $y$ 可表示为：
+\begin{equation}
+	y = \sqrt{P_t} (h_d + \bm{h}_r^\mathrm{T} \bm{\phi}) s + z,
+\end{equation}
+其中，$P_t$ 为基站发射功率，$s$ 是满足 $\mathbb{E}[|s|^2] = 1$ 的发送符号，$z \sim \mathcal{CN}(0, \sigma^2)$ 为加性复高斯噪声。
+于是，用户端解码数据符号 $s$ 的信噪比可由 RIS 的反射系数向量 $\bm{\phi}$ 决定，可写为：
+\begin{equation}\label{eq:ris_snr_definition}
+	\text{SNR}(\bm{\phi}) = \frac{P_t |h_d + \bm{h}_r^\mathrm{T} \bm{\phi}|^2}{\sigma^2}.
+\end{equation}
+
+RIS系统的目标是通过联合设计所有反射单元的离散相移，寻找最优的反射系数向量$\bm{\phi}$，以最大化式~\eqref{eq:ris_snr_definition}所定义的接收信噪比。该优化问题可建模为：
+\begin{equation}\label{eq:ris_optimization_problem}
+	\begin{aligned}
+		\max_{\bm{\phi}} \quad & \frac{P_t |h_d + \bm{h}_r^\mathrm{T} \bm{\phi}|^2}{\sigma^2}, \\
+		\text{s.t.} \quad & \phi_n = e^{j\theta_n}, \quad \forall n = 1, \dots, N, \\
+		& \theta_n \in \left\{ 0, \Delta\theta, 2\Delta\theta, \dots, (2^b - 1)\Delta\theta \right\}.
+	\end{aligned}
+\end{equation}
+
+直接求解该优化问题的前提是需要准确地获取全局的精确信道状态信息$h_d$和$\bm{h}_r$。然而，由于 RIS 通常由无源器件构成，不配备射频链路和基带信号处理模块，它无法像常规基站设备那样主动收发导频信号来辅助信道估计。
+若要在基站或用户端估计等效级联信道 $\bm{h}_r$，需要设计特定的导频传输与 RIS 反射模式。
+由于级联信道维度与反射单元数量 $N$ 成正比，为区分每个 $h_{r,n}$ 的贡献，所需的导频开销至少与 $N$ 呈线性关系，当 $N$ 很大时，会造成相当大的系统开销；同时，单个级联反射信道强度远弱于背景信道，估计时也容易产生较大误差。
+此外，传统的基于导频的信道估计方法需要对现有无线通信协议进行修改，以支持基站、RIS 和用户之间的指令交互与协作测量，阻碍了RIS的快速灵活部署。
+
+为克服上述困难，本章研究无需显式获取 CSI 的盲波束赋形方法，利用用户端易于获取的参考信号接收功率作为优化的依据。由于测量过程不可避免地包含噪声，用户端测得的 RSRP 的期望值可表示为信号功率与噪声功率之和：
+\begin{equation}\label{eq:ris_rsrp_definition}
+	\mathbb{E}\left[\text{RSRP}(\bm{\phi})\right] = \mathbb{E}\left[|y|^2\right] = P_t \left| h_d + \bm{h}_r^\mathrm{T} \bm{\phi} \right|^2 + \sigma^2.
+\end{equation}
+对比发现，最大化 RSRP 在数学上与最大化 SNR 是完全等价的。于是，RIS 控制器可以周期性地调整其反射配置 $\bm{\phi}$，并根据用户反馈的 RSRP 来评估该配置的优劣，进而迭代地搜索最优解，实现在线优化。这一策略无需修改现有通信协议，具有良好的工程可实现性。下一节将针对这一问题模型，提出基于分组反馈的波束赋形算法，以在有限的反馈开销下高效地寻找最优的 RIS 配置。
+
+
+\section{基于接收功率反馈的自适应波束赋形算法}
+
+
+如上一节所述，将 RIS 的相移优化转化为最大化 RSRP 的盲优化问题，避开了较为困难的信道状态信息获取环节。然而，由式~\eqref{eq:ris_optimization_problem}可知，若直接在整个离散可行域内进行穷举搜索，其解空间大小高达 $(2^b)^N$。对于包含数百上千个反射单元的 RIS 面板而言，在实际系统较短的信道相干时间内无法穷举。因此，本节将提出两种启发式的自适应波束赋形算法。
+
+
+\subsection{快速贪婪波束赋形算法}
+
+
+在视距占主导或仅存在单一强多径的典型通信场景中，最优的 RIS 反射相移在空间分布上往往具有高度的结构化特征。
+假设总数为 $N$ 的 RIS 反射单元呈均匀平面阵列排列，包含 $N_z$ 行与 $N_y$ 列，且行列天线间距分别为 $d_z$ 与 $d_y$。
+采用标准的 3GPP 空间坐标系建模，假设 RIS 面板垂直放置（位于 $y$-$z$ 平面），在远场平面波假设下，任意空间方向 $(\vartheta, \varphi)$ 对应的阵列导向矢量 $\bm{a}(\vartheta, \varphi) \in \mathbb{C}^{N \times 1}$ 可表示为水平和垂直两个均匀线阵导向矢量的克罗内克积：
+\begin{equation}
+	\bm{a}(\vartheta, \varphi) = \bm{a}_y(\vartheta, \varphi) \otimes \bm{a}_z(\vartheta),
+\end{equation}
+其中$\bm{a}_y(\vartheta, \varphi) \in \mathbb{C}^{N_y \times 1}$ 和 $\bm{a}_z(\vartheta) \in \mathbb{C}^{N_z \times 1}$ 分别表示沿$y$ 轴水平与$z$ 轴垂直的一维导向矢量，其表达式如下：
+\begin{align}
+	\bm{a}_y(\vartheta, \varphi) &= \left[ 1, e^{-j\frac{2\pi}{\lambda} d_y \sin\vartheta \sin\varphi}, \dots, e^{-j\frac{2\pi}{\lambda} d_y (N_y-1) \sin\vartheta \sin\varphi} \right]^\mathrm{T}, \\
+	\bm{a}_z(\vartheta) &= \left[ 1, e^{-j\frac{2\pi}{\lambda} d_z \cos\vartheta}, \dots, e^{-j\frac{2\pi}{\lambda} d_z (N_z-1) \cos\vartheta} \right]^\mathrm{T},
+\end{align}
+其中 $\vartheta$ 和 $\varphi$ 分别表示空间中的天顶角与方位角，$\lambda$ 为载波波长。
+
+设基站到 RIS 的到达角为 $(\vartheta_t, \varphi_t)$，RIS 到用户的出发角为 $(\vartheta_r, \varphi_r)$。若要最大化端到端的接收信号功率，在连续相移条件下，最优的 RIS 反射系数向量 $\bm{\phi}_{\text{opt}}$ 应当使各级联路径的信号在接收端相位完全对齐，即满足：
+\begin{equation}\label{eq:ris_opt_continuous_phi}
+	\bm{\phi}_{\text{opt}} = \left( \bm{a}(\vartheta_r, \varphi_r) \odot \bm{a}(\vartheta_t, \varphi_t) \right)^*,
+\end{equation}
+其中 $\odot$ 表示哈达玛积。于是，理想的最优相移向量可以分解为列维度和行维度复指数矢量的克罗内克积。
+当阵列规模较大时，这类具有等差相位梯度的导向矢量可以用离散傅里叶变换（Discrete Fourier Transform，DFT）矩阵的列向量高精度地近似\cite{yin2013coordinated,adhikary2013joint}。具体而言，定义维度为 $K \times K$ 的标准 DFT 矩阵 $\mathcal{F}(K)$ 如下：
+\begin{equation}
+	\mathcal{F}(K) = \begin{bmatrix}
+		1 & 1 & 1 & \cdots & 1 \\
+		1 & \xi & \xi^{2} & \cdots & \xi^{K-1} \\
+		1 & \xi^{2} & \xi^{2 \cdot 2} & \cdots & \xi^{2(K-1)} \\
+		\vdots & \vdots & \vdots & \ddots & \vdots \\
+		1 & \xi^{K-1} & \xi^{2(K-1)} & \cdots & \xi^{(K-1)(K-1)}
+	\end{bmatrix},
+\end{equation}
+其中，复指数项 $\xi = e^{-j(2\pi/K)}$表示相邻单元间的空间相位差。
+
+
+基于此，对于 $N_z \times N_y$ 的平面阵列，RIS 的波束赋形码本可构建为 $\mathcal{F}(N_y) \otimes \mathcal{F}(N_z)$。该码本矩阵中的每一列，都对应着物理空间中一个特定的反射波束指向。这说明在连续相移空间中，最优的 RIS 表面相位分布呈现出沿行列方向的二维线性渐变；然而，当受限于低分辨率的离散量化，在物理空间上处于同一行或同一列的相邻反射单元有一定概率具有完全相同的相移状态。
+
+快速贪婪波束赋形算法正是受此二维DFT码本空间量化特性的启发。为压缩搜索空间，GFB 放弃了对单个反射单元的独立盲搜，转而利用阵列的行列几何结构进行降维。为便于直观表述，将原一维反射系数向量 $\bm{\phi}$ 重新映射为反应二维物理位置的矩阵 $\bm{\Phi} \in \mathbb{C}^{N_z \times N_y}$。GFB 算法通过按行或按列对相移进行 $180^\circ$的整体翻转来执行局部搜索，整个算法分为水平搜索与垂直搜索两个连续阶段。算法首先以一个全部相同相位的初始矩阵启动，并记录初始的 RSRP 测量值。随后，逐列或逐行生成探测矩阵并下发至 RIS 面板。若探测状态下的 RSRP 较历史最佳值有所提升，则保留该翻转操作并更新最佳状态；反之，则拒绝翻转，恢复至上一状态。
+
+
+\begin{algorithm}[!htbp]
+	\caption{快速贪婪波束赋形算法（GFB）}
+	\label{alg:ris_gfb}
+	\begin{algorithmic}[1]
+		\REQUIRE RIS 面板行数 $N_z$ 与列数 $N_y$，接收端实时反馈的RSRP测量值 $P(\cdot)$。
+		\ENSURE 优化后的 RIS 二维反射系数矩阵 $\bm{\Phi}_{\text{GFB}}$。
+		
+		\STATE \textbf{// 步骤 1：系统初始化}
+		\STATE 生成全 $1$ 的初始反射系数矩阵 $\bm{\Phi}_{0} \in \mathbb{C}^{N_z \times N_y}$；
+		\STATE 设当前矩阵为 $\bm{\Phi} \leftarrow \bm{\Phi}_0$ 并配置至 RIS，获取初始功率反馈 $P_{\text{best}} \leftarrow P(\bm{\Phi}_0)$；
+		
+		\STATE \textbf{// 步骤 2：水平搜索}
+		\FOR{$n = 1, 2, \cdots, N_y$}
+		\STATE 将当前矩阵 $\bm{\Phi}$ 的第 $n$ 列乘以 $-1$，生成探测矩阵 $\bm{\Phi}_{\text{probe}}$；
+		\STATE 将 $\bm{\Phi}_{\text{probe}}$ 配置到RIS，并获取最新的功率反馈 $P_{\text{probe}} \leftarrow P(\bm{\Phi}_{\text{probe}})$；
+		\STATE \textbf{若} $P_{\text{probe}} > P_{\text{best}}$ \textbf{则} 
+		\STATE \quad \textbf{接受翻转：}更新 $\bm{\Phi} \leftarrow \bm{\Phi}_{\text{probe}}$，更新历史最佳功率 $P_{\text{best}} \leftarrow P_{\text{probe}}$；
+		\STATE \textbf{否则}
+		\STATE \quad \textbf{拒绝翻转：}矩阵 $\bm{\Phi}$ 保持不变；
+		\ENDFOR
+		
+		\STATE \textbf{// 步骤 3：垂直搜索}
+		\FOR{$m = 1, 2, \cdots, N_z$}
+		\STATE 将当前矩阵 $\bm{\Phi}$ 的第 $m$ 行乘以 $-1$，生成探测矩阵 $\bm{\Phi}_{\text{probe}}$；
+		\STATE 将 $\bm{\Phi}_{\text{probe}}$ 配置到RIS，并获取最新的功率反馈 $P_{\text{probe}} \leftarrow P(\bm{\Phi}_{\text{probe}})$；
+		\STATE \textbf{若} $P_{\text{probe}} > P_{\text{best}}$ \textbf{则} 
+		\STATE \quad \textbf{接受翻转：}更新 $\bm{\Phi} \leftarrow \bm{\Phi}_{\text{probe}}$，更新历史最佳功率 $P_{\text{best}} \leftarrow P_{\text{probe}}$；
+		\STATE \textbf{否则}
+		\STATE \quad \textbf{拒绝翻转：}矩阵 $\bm{\Phi}$ 保持不变；
+		\ENDFOR
+		
+		\RETURN 最终的反射系数矩阵 $\bm{\Phi}_{\text{GFB}} \leftarrow \bm{\Phi}$。
+	\end{algorithmic}
+\end{algorithm}
+
+
+GFB 算法的具体执行流程如算法~\ref{alg:ris_gfb} 所示，算法完成一轮优化需与用户端进行 $N_z + N_y$ 次功率测量和交互。与传统的逐个反射单元估计信道的方法相比，GFB 将开销从$\mathcal{O}(N_y \times N_z)$降低至$\mathcal{O}(N_y + N_z)$，缩短了 RIS 系统的波束对齐延迟。
+此外，由于每次仅调整部分单元，且采用单调递增的保留准则，算法运行期间的接收信噪比不会出现断崖式下跌，可以在波束赋形调整过程中进行数据传输。
+
+
+\subsection{自适应步长贪婪算法}
+
+虽然 GFB 算法通过利用阵列的几何结构实现了搜索复杂度的降低，但其局限性也十分明显。其一，该算法主要面向 1 比特精度的物理原型系统设计，其翻转机制未能充分利用多比特量化所提供的相移自由度。其二，在复杂多径散射或较高测量噪声的实际部署环境中，该算法容易受干扰而陷入局部最优解。为克服这些缺陷，本小节提出一种更具鲁棒性的自适应步长贪婪算法。
+该算法的核心思想是放弃 GFB 算法中按行列分组的固定搜索模式，转而直接在全部 $N$ 个反射单元上进行操作，并且算法引入了一种动态步长机制，能更加有效地跳出局部最优。
+
+ASG算法在每次迭代中随机选择 $N_i$ 个反射单元进行相位重配，其中步长 $N_i$ 随着迭代的进行而减小。在迭代初期，$N_i$ 取值较大，相当于在解空间中进行大范围的全局探索，有助于迅速逃离不良的局部区域；随着迭代推进，$N_i$ 逐渐减小至较低水平，算法相应转为小范围的局部精细搜索，从而能够在最优解邻域内实现稳定、精确的收敛。
+具体而言，设算法的总迭代调整次数为 $I$，在第 $i$ 次迭代中，$N_i$遵循如下的余弦衰减策略：
+\begin{equation}\label{eq:ris_asg_step}
+	N_i = \left\lceil N_{\min} + \frac{1}{2}(N_{\max} - N_{\min}) \left( 1 + \cos\left( \pi \frac{i}{I} \right) \right) \right\rceil,
+\end{equation}
+其中，$N_{\max}$ 和 $N_{\min}$ 分别代表每次迭代中允许调整的反射单元数量的上限与下限。
+
+\begin{algorithm}[!htbp]
+	\caption{自适应步长贪婪算法（ASG）}
+	\label{alg:ris_asg}
+	\begin{algorithmic}[1]
+		\REQUIRE 总迭代次数 $I$，调整单元数量上下限 $N_{\max}$ 与 $N_{\min}$，相移量化比特数 $b$。
+		\ENSURE 优化得到的 RIS 反射系数向量 $\bm{\phi}_{\text{ASG}}$。
+		
+		\STATE \textbf{初始化：}随机生成初始配置 $\bm{\phi}_1$，相移取自离散集合 $\{0, \Delta\theta, \dots, (2^b-1)\Delta\theta\}$；
+		\STATE 获取初始功率 $P_{\text{best}} \leftarrow P(\bm{\phi}_1)$，记录历史最佳状态 $\bm{\phi}_{\text{best}} \leftarrow \bm{\phi}_1$；
+		
+		\FOR{$i = 1, 2, \cdots, I$}
+		\STATE 计算步长：根据式~\eqref{eq:ris_asg_step} 计算当前迭代重配单元数 $N_i$；
+		\STATE 状态探测：令 $\bm{\phi}_{\text{probe}} \leftarrow \bm{\phi}_i$，随机选取其中 $N_i$ 个单元重新分配离散相移；
+		\STATE 物理测量：将 $\bm{\phi}_{\text{probe}}$ 配置至 RIS，获取接收功率 $P(\bm{\phi}_{\text{probe}})$；
+		
+		\IF{$P(\bm{\phi}_{\text{probe}}) > P_{\text{best}}$}
+		\STATE 接受新状态：$\bm{\phi}_{i+1} \leftarrow \bm{\phi}_{\text{probe}}$，更新最佳记录 $P_{\text{best}} \leftarrow P(\bm{\phi}_{\text{probe}})$ 且 $\bm{\phi}_{\text{best}} \leftarrow \bm{\phi}_{\text{probe}}$；
+		\ELSE
+		\STATE 拒绝新状态：$\bm{\phi}_{i+1} \leftarrow \bm{\phi}_i$；
+		\ENDIF
+		\ENDFOR
+		
+		\RETURN $\bm{\phi}_{\text{ASG}} \leftarrow \bm{\phi}_{\text{best}}$。
+	\end{algorithmic}
+\end{algorithm}
+
+ASG 算法的具体执行流程如下。首先，算法将 RIS 的反射系数向量初始化为 $\bm{\phi}_1$，其各单元相移从离散集合 $\left\{ 0, \Delta\theta, \dots, (2^b - 1)\Delta\theta \right\}$ 中等概率随机选取。在后续的每一次迭代 $i$ 中，算法根据式~\eqref{eq:ris_asg_step} 计算当前的调整步长 $N_i$。接着，从当前配置 $\bm{\phi}_i$ 中随机选取 $N_i$ 个反射单元，为这些单元重新分配随机生成的离散相移值，其余单元则保持不变，从而得到一个新的候选探测状态 $\bm{\phi}_{\text{probe}}$。随后，系统将该候选配置下发至 RIS 并获取接收端的 RSRP 测量反馈。算法执行严格的贪婪选择准则：若探测状态带来的接收功率超越了历史最佳值，则接受该新配置；否则拒绝此次调整，保持原状态不变。ASG 算法的伪代码如算法~\ref{alg:ris_asg} 所示。
+
+在计算复杂度方面，ASG算法由相同的$I$次迭代组成。在每一次迭代中，计算单元数的复杂度为$\mathcal{O}(1)$；随机选择单元并重新配置的复杂度与单元总数$N$成正比。因此，算法的总复杂度近似为$\mathcal{O}(IN)$，具有较高的时效性。同时，ASG算法可以避免在调整过程中使用全局均匀随机的配置，提高了调整时间内能实现的吞吐量。
+
+
+\section{数值仿真分析}\label{sec:ris_simulation}
+
+\subsection{仿真参数设置与基准方案}
+
+本节基于 MATLAB 平台进行数值仿真，评估本章提出的快速贪婪波束赋形算法与自适应步长贪婪算法的性能。为了贴近典型的三维无线通信下行部署场景，本节设定基站位于坐标 $(150, -200, 20) \text{ m}$ 处，RIS 部署于坐标原点 $(0,0,0) \text{ m}$ 处。RIS 反射面位于 $y$-$z$ 平面。假设单天线用户均匀随机分布于以原点为球心、半径为 $4\,\text{m}$ 的半球面上。系统工作在 Sub-6 GHz 频段，载波频率设为 $f_c = 2.6\,\text{GHz}$。RIS 采用均匀平面方形阵列，包含 $N = 256$ 个无源反射单元，相邻单元间距为半波长。
+
+在信道模型方面，考虑到实际通信环境中的多径效应，基站至 RIS、RIS 至用户与基站至用户的信道均采用莱斯衰落模型。以基站至 RIS 的信道 $\bm{h}_\mathrm{BR}$ 为例，表达式为：
+\begin{equation}
+	\bm{h}_\mathrm{BR} = 10^{-\mathrm{PL}_\mathrm{BR}/20} \left( \sqrt{\frac{\kappa}{\kappa+1}} \bm{h}_\mathrm{BR}^{\mathrm{LoS}} + \sqrt{\frac{1}{\kappa+1}} \bm{h}_\mathrm{BR}^{\mathrm{NLoS}} \right),
+\end{equation}
+其中，$\mathrm{PL}_\mathrm{BR}$ 为该段链路的路径损耗，$\kappa$ 为莱斯因子，$\bm{h}_\mathrm{BR}^{\mathrm{LoS}}$ 为由收发两端空间几何相对位置决定的归一化视距导向矢量，$\bm{h}_\mathrm{BR}^{\mathrm{NLoS}}$ 为服从 $\mathcal{CN}(\bm{0}, \bm{I})$ 的瑞利多径散射分量。同理，RIS 至用户的信道 $\bm{h}_\mathrm{UR}$ 和基站至用户的信道$h_d$亦采用类似结构。基站至RIS与RIS至用户链路的路径损耗计算为\cite{ren2023configuring, abeywickrama2020intelligent, jiang2021learning}：
+\begin{equation}
+	\mathrm{PL}_\mathrm{BR} = 30 + 22\log_{10}(d_\mathrm{BR}),\quad
+	\mathrm{PL}_\mathrm{UR} = 30 + 22\log_{10}(d_\mathrm{UR}),
+\end{equation}
+其中，$d_\mathrm{BR}$ 和 $d_\mathrm{UR}$ 分别表示基站至RIS和RIS至用户的距离。基站到用户的背景通道的路径损耗则计算为：
+\begin{equation}
+	\mathrm{PL}_d = 32.6 + 36.7\log_{10}(d_d),
+\end{equation}
+其中 $d_d$ 表示基站与用户之间的距离。
+除非在具体仿真分析中另有说明，本节的所有数值仿真均采用表~\ref{tab:ris_sim_params}中列出的参数。所有仿真结果均通过 $N_{\mathrm{mc}}$ 次蒙特卡洛随机用户位置取平均得到。
+
+\begin{table}[!htbp]
+	\centering
+	\caption{RIS 辅助无线通信系统仿真参数表}
+	\label{tab:ris_sim_params}
+	\begin{tabular}{cc}
+		\toprule
+		\textbf{参数} & \textbf{数值} \\
+		\midrule
+		载波频率 $f_c$ & $2.6 \text{ GHz}$ \\
+		基站发射功率 $P_t$ & $30 \text{ dBm}$ \\
+		接收端背景噪声功率 $\sigma^2$ & $-100 \text{ dBm}$ \\
+		RIS 反射单元总数 $N$ & $256$ \\
+		反射单元量化精度 $b$ & $1 \text{ bit}$ \\
+		莱斯因子 $\kappa$ & $5 \text{ dB}$ \\
+		功率测量次数 $I$ & $1000$ \\
+		ASG 单步最大调整单元数 $N_{\max}$ & $20$ \\
+		ASG 单步最小调整单元数 $N_{\min}$ & $5$ \\
+		蒙特卡洛试验次数 $N_{\mathrm{mc}}$ & $10000$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+仿真中选取了以下方案作为性能对比与参考基准。所有方案均采用接收信噪比作为统一性能指标：
+\begin{itemize}
+	\item \textbf{DFT算法：}
+	使用前文构建的二维 DFT 码本进行全局空间波束扫描，该码本中的连续相位已被量化至 $b$ 比特的离散状态。
+	
+	\item \textbf{CSM算法：}
+	基于条件样本均值的盲波束赋形算法\cite{ren2023configuring}，是现有研究中不依赖CSI的统计优化方法。
+	
+	\item \textbf{RS算法：}
+	在测量过程中持续采用纯随机生成的离散相移配置。
+	
+	\item \textbf{完美CSI上界：}
+	假设系统能够完美获知CSI，将连续最优相移投影至离散集合，代表该系统配置下的性能上界。
+	
+	\item \textbf{无RIS：}
+	系统未部署 RIS 时的性能，代表系统的基底性能。
+\end{itemize}
+
+
+\subsection{仿真结果与分析}
+
+首先评估本章所提波束赋形算法在实际系统中的搜索效率与收敛性能。图~\ref{fig:ris_figSNRvsMeasureNumber} 给出了系统可达信噪比随测量次数 $I$ 的变化曲线。其中，可达信噪比定义为前 $I$ 次探测中所发现的最高信噪比。
+从基准性能来看，若不部署 RIS，仅依靠直射链路与背景散射，接收信噪比仅约 $8\text{ dB}$；而在部署RIS的情况下，理论上界可达约 $47.5\text{ dB}$，说明引入 256 单元 RIS 可带来近 $40\text{ dB}$ 的阵列增益。
+对比各波束赋形算法的收敛行为可见：GFB算法在迭代初期呈现较快的收敛速度，接收SNR迅速升至 $43\text{ dB}$ 以上，这得益于其仅需 $32$ 次测量即可完成一轮宏观波束搜索。但其受限于固定的翻转模式，易陷入局部最优，最终稳定在约 $44\text{ dB}$。
+ASG算法初期收敛速度稍缓，但其克服局部最优的能力更强，能通过精细的局部扰动逼近最优配置。从图中能看出，其在 $I \approx 450$ 时反超 GFB，并于 $I=1000$ 时达到 $46\text{ dB}$ 以上，是所有算法中最为接近理论上界的。
+相比之下，传统算法表现有限。DFT 算法受码本分辨率制约，性能略低于 GFB。RS搜索与CSM算法则收敛缓慢，最终信噪比仅为 $36.5\text{ dB}$左右。
+
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ris/ris_figSNRvsMeasureNumber.pdf}
+	\caption{不同算法下RIS系统可达信噪比随测量次数的变化曲线}
+	\label{fig:ris_figSNRvsMeasureNumber}
+\end{figure}
+
+此外，在线传输能力是衡量算法实用性的关键。GFB 与 ASG 采用贪婪保留准则，除了一次探测的时隙可能由于相位变化导致信噪比短暂波动外，信噪比在宏观上呈现单调递增的趋势，从而支持边传输边优化的模式。
+而 CSM 与 RS 算法因持续施加随机相位配置，其瞬时信噪比长期在低水平波动，在测量结束前用户几乎无法正常通信，导致系统的吞吐量较低。
+
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ris/ris_figSNRvsPhaseBit.pdf}
+	\caption{不同量化比特数下各波束赋形算法的可达信噪比表现}
+	\label{fig:ris_figSNRvsPhaseBit}
+\end{figure}
+
+接下来，考虑相移量化比特数$b$对系统可达信噪比的影响。如图~\ref{fig:ris_figSNRvsPhaseBit}所示，随着$b$的增加，完美CSI上界在$b \le 3$时有明显提升，随后趋于饱和，这表明$3$比特的量化精度已基本逼近连续相移的物理极限，继续增加比特数带来的边际增益很小。
+在所考虑的盲波束赋形方案中，ASG算法与DFT算法的效率随$b$的增加略有提升，但当 $b \ge 3$ 后同样趋于平缓。这是由于在有限的功率测量次数下，ASG算法难以在呈指数级膨胀的解空间中进行充分探索。
+GFB算法与纯随机RS算法的性能在整个量化比特数增加的过程中保持恒定。特别是GFB算法，其行列翻转的探测机制只利用了 $1\text{ bit}$ 的自由度，适合部署于低成本的单比特RIS原型系统中。
+与上述算法不同的是，CSM算法的效率随着$b$的增加出现了衰退的现象。这是由于CSM算法必须将有限的测量信息分配到反射单元的所有离散状态上，当$b$增加导致状态数骤增时，单个状态分配到的测量样本匮乏，致使条件均值估计的准确性大幅下降，最终其性能甚至劣于完全不依赖采样的RS算法。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ris/ris_figSNRvsRicianKfactor.pdf}
+	\caption{可达信噪比随莱斯因子 $\kappa$ 的变化曲线}
+	\label{fig:ris_figSNRvsRicianKfactor}
+\end{figure}
+
+进一步考察莱斯因子 $\kappa$ 对系统可达信噪比的影响，以验证各算法在不同物理传播环境下的适应能力。如图~\ref{fig:ris_figSNRvsRicianKfactor} 所示，随着 $\kappa$ 从 $-10\text{ dB}$ 增加至 $10\text{ dB}$，信道逐渐由随机多径分量主导过渡为视距分量主导。在变化过程中，ASG 算法展现出了较强的环境鲁棒性，其性能曲线在整个 $\kappa$ 区间内保持平稳且始终接近完美 CSI 上界。这是因为ASG算法没有引入关于信道分布的先验假设，能够处理多径环境下的无序信道。
+相反，GFB 算法与 DFT 算法更为依赖信道的视距成分。DFT 算法受限于预定义的二维空间导向矢量，而 GFB 算法的行列整体翻转机制本质上同样隐含了最优相位分布具备二维线性梯度的空间结构假设。因此，在 $\kappa < 0\text{ dB}$ 的强多径环境中，由于缺乏主导的平面波前，这两种算法的可达信噪比较低。
+此外，RS 算法由于配置完全无序，曲线呈现为一条较低的水平直线；CSM 算法受限于前文提及的样本匮乏问题，其统计均值在有限的测量次数中无法准确估计，其整体性能处于较低水平。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ris/ris_figSNRvsRISsize.pdf}
+	\caption{可达信噪比随 RIS 反射单元总数 $N$ 的变化曲线}
+	\label{fig:ris_figSNRvsRISsize}
+\end{figure}
+
+最后，探讨 RIS 反射单元总数 $N$ 对系统可达信噪比的影响，以验证各算法在大规模阵列下的扩展性。如图~\ref{fig:ris_figSNRvsRISsize} 所示，随着 $N$ 从 $36$ 增加至 $400$，完美 CSI 上界呈现非线性增长，这印证了 RIS 辅助通信中接收信号功率与单元数量的平方成正比的理论特性。
+在此过程中，ASG 算法的性能始终保持稳健的上升趋势，展现出较强的解空间搜索效率。GFB 算法和 DFT 算法紧随其后，在大规模部署时同样能取得可观的阵列增益。
+相比之下，CSM 算法在 $N<50$ 时性能尚可，但随着 $N$ 的持续增大，其曲线迅速变缓。这说明单元数增加导致单个参数的观测样本不足，估计误差被快速放大。而 RS 算法虽无主动波束对齐，却依靠大量单元的随机叠加增益，使其信噪比随 $N$ 稳步提升，并在 $N>250$ 时反超 CSM 算法。这一对比凸显了本章所提贪婪搜索算法在大规模 RIS 盲波束赋形中的优越性与实用价值。
+
+\section{面向 6G 的 RIS 原型通信系统设计}
+
+本节搭建了一套软硬件协同的 RIS 原型通信系统。该系统实现了从射频收发、功率测量到状态反馈与阵列控制的完整闭环，能够运行前文提出的波束赋形算法。
+
+\subsection{原型设计与系统架构}
+
+作为系统的核心电磁调控节点，RIS 板卡的设计直接决定了原型的成本与性能。在文献\lcite{tan2016increasing}中，作者提出了一种可以为每个单元提供连续相移变化的RIS。其微控制器产生脉冲宽度调制信号，经过低通滤波后产生0至5 V连续变化的偏置电压。在这种方法中，每个单元的PWM信号需要独立生成，且需要相应的低通滤波电路。因此，在构建大规模RIS时，成本和硬件复杂度会大幅增加。虽然高相移分辨率在利用RIS消除多用户场景中的干扰时可能很有用\cite{wu2019intelligent}，但本章的目标是让RIS将入射波反射为指向接收机的波束。在这种场景下，低精度相位配置足以避免各单元反射的信号发生相消干涉\cite{yang2017study}。与高精度配置相比，其功率损失仅为几个分贝\cite{wu2020beamforming}。为了降低原型的复杂度，本系统采用1比特相位调控，即通过两个离散电压来表示相位差约为$180^\circ$的两种反射状态。
+
+
+
+针对不同的测试频段与应用场景，本系统共研制了两套 RIS 面板。第一套是工作在 5.8 GHz 频段的大规模阵列，包含 1100 个反射单元，主要用于实验室及室外远距离场景的原型验证；第二套是工作在 2.6 GHz 频段的中等规模阵列，包含 256 个反射单元，主要用于与当前 5G 商用网络频段相兼容的室外覆盖增强测试。
+
+
+\begin{figure}[!htbp]
+	\centering
+		\includegraphics[width=0.6\linewidth]{ris/ris_frontview.pdf}
+	\caption{工作于 5.8 GHz 频段的 1100 单元 RIS 面板实物图}
+	\label{fig:ris_frontview}
+\end{figure}
+
+以5.8 GHz RIS 面板为例，其正面实物图如图~\ref{fig:ris_frontview} 所示。该RIS的尺寸为 $80.08 \text{ cm} \times 31.30 \text{ cm}$，采用均匀平面阵列布局，共包含 $55 \times 20 = 1100$ 个1比特无源反射单元，电磁反射区域的面积为$78.65 \, \mathrm{cm} \times 20.54 \, \mathrm{cm}$。在典型的无线通信场景中，用户通常在水平面内移动，而在垂直方向上的位置变化相对较小。据此，面板在布线设计上进行了分组压缩，将每一列中相邻的 5 个反射单元作为一组，共享同一路偏置电压控制信号和反射系数。因此，该RIS实际独立的控制通道数被精简至 220 路，降低了系统的布线难度与控制开销。
+在阵列控制电路方面，RIS 面板的后端集成了一套基于现场可编程逻辑门阵列（FPGA）的主控系统。FPGA主控板连接了 28 个 8 位串入并出移位寄存器来生成并行的离散逻辑状态，随后通过电平转换器调整输出电压幅值，使得反射单元在 5.8 GHz 工作频率下能够产生约 $180^\circ$ 的相位差。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.9\linewidth]{ris/ris_prototype_photo.pdf}
+	\caption{RIS 辅助的无线通信原型系统实物图}
+	\label{fig:ris_prototype_photo}
+\end{figure}
+
+
+基于上述 RIS 面板搭建的完整的无线通信原型系统如图~\ref{fig:ris_prototype_photo}所示。整个原型通信系统由发射机（模拟基站）、接收机（模拟用户设备）、RIS 面板及 FPGA 主控模块组成。其中，发射机和接收机均由计算机、通用软件无线电外设（USRP）及喇叭天线构成；FPGA 主控模块则包含核心板、控制电路板和实时反馈模块。图~\ref{fig:ris_system_diagram}展示了RIS辅助无线通信系统的架构框图，表~\ref{tab:ris_hardware_specs}总结了所用硬件模块的详细信息。
+系统工作时，发射端通过天线发送承载高清视频流的射频信号；电磁波入射到 RIS 表面，经相位重构后反射至接收端；接收端则利用 USRP对信号进行下变频，并由上位机完成基带解调与处理。
+
+
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ris/ris_system_diagram.pdf}
+	\caption{RIS辅助的无线通信系统架构框图}
+	\label{fig:ris_system_diagram}
+\end{figure}
+
+\begin{table}[!htbp]
+	\centering
+	\caption{原型通信系统核心硬件模块参数}
+	\label{tab:ris_hardware_specs}
+	\begin{tabular}{cc}
+		\toprule
+		\textbf{硬件模块名称} & \textbf{型号与规格描述} \\
+		\midrule
+		中央计算机 & 搭载 Intel Core i7-9700 处理器的通用计算机 \\
+		软件无线电平台 & NI USRP-2954R \\
+		主控逻辑模块 & 基于 Xilinx Zynq 7100 的开发板 \\
+		喇叭天线 & 增益17.1 dBi，孔径$169 \text{ mm} \times 119 \text{ mm}$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+为实现算法的在线迭代与波束实时追踪，系统在接收端与 RIS 控制板之间建立了一条低延迟物理反馈链路。接收机在进行基带解码的同时，实时测量当前信道的参考信号接收功率，随后，上位机通过串口将该指标实时回传至 FPGA 主控板。
+FPGA 根据内置的自适应波束赋形算法进行状态评估，解算出下一时刻的最佳离散反射系数矩阵，进而驱动移位寄存器更新 RIS 单元的反射状态，完成一次波束赋形操作。
+这一反馈机制未向现有数据帧中插入 RIS 控制导频，使得RIS 技术能够以透明化的方式集成至现有的无线通信网络中，避免了对终端设备的硬件升级要求。
+
+除了具备实时波束赋形能力外，该系统还展现出了极低的功耗。RIS 的波束调控通过为变容二极管施加反向偏置电压实现，几乎不产生漏电流，二极管的总功耗仅为1.76 mW；主要的硬件功耗来自于电平转换器与稳压电路。实测数据显示，在常规波束刷新率下，这套包含 1100 单元的 RIS 面板的功耗仅为 0.93 W。
+相较于传统基于密集射频链路的大规模 MIMO 有源天线阵列，该原型系统在能效方面展现出了数量级上的优势，从硬件层面印证了 RIS 具备低成本、低功耗部署的应用潜力。
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+\section{本章小结}
+
+
+
+
+
+
+
+\section{典型室内环境下的覆盖增强测试}
+
+\section{室外及远距离环境下的传输测试}
+
+\section{现网融合与应用测试}
+
+
+\subsubsection{信道互易性测试}
+
+参考智能超表面工程化白皮书
+
+
+上面的测试标题让GPT重新编排一下，涵盖所有的测试并合理分类。

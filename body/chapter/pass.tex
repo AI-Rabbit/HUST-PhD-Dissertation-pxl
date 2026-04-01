@@ -1,0 +1,555 @@
+\chapter{捏合天线波束赋形性能分析与几何辅助定位算法}\label{ch:pass}
+
+\section{引言}
+
+\textcolor{red}{之后再写}
+
+\section{系统模型}
+
+\subsection{系统模型}
+
+本章考虑一个典型的基于捏合天线的上行通信系统。如图~\ref{fig:pass_structure}所示，系统由$M$条介质波导组成，波导均沿$x$轴方向铺设，长度为$L_x$，并在$y$轴方向上均匀分布于区间$[0, L_y]$内，即相邻两条波导之间的间距为$L_y/(M-1)$。所有波导位于高度为$L_z$的水平平面上，每条波导上部署一个可沿波导方向连续滑动的捏合天线。
+建立图示的坐标系，第$m$个捏合天线的位置坐标可表示为$\bm{p}_m = [x_m, y_m, z_m]^{\mathrm{T}}$。其中，$x_m \in [0, L_x]$为该天线在波导上可动态调节的滑动位置，$y_m = \frac{L_y(m-1)}{M-1}$为其固定的纵坐标，$z_m = L_z$为波导所在平面的高度。假设单天线用户终端位于地面，其位置坐标表示为$\bm{p}_U = [u, v, 0]^{\mathrm{T}}$，其中$u \in [0, L_x]$，$v \in [0, L_y]$。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_structure.pdf}
+	\caption{捏合天线系统模型}
+	\label{fig:pass_structure}
+\end{figure}
+
+在捏合天线系统中，用户端到基站端的端到端信道由两段级联而成：其一是从用户到捏合天线的自由空间传播信道；其二是从捏合天线到波导馈电点的波导内部传输信道。
+假设用户与捏合天线之间存在视距路径，用户到第$m$个捏合天线的自由空间信道$h_m$可建模为：
+\begin{equation}\label{eq:pass_channel_hm}
+	h_m = \frac{\sqrt{\eta}}{\|\bm{p}_U - \bm{p}_m\|} e^{-j\frac{2\pi}{\lambda}\|\bm{p}_U - \bm{p}_m\|},
+\end{equation}
+其中，$\lambda$为自由空间中的载波波长，$\eta = \frac{\lambda^2}{16\pi^2}$为各向同性辐射假设下的参考路径损耗因子，$\|\bm{p}_U - \bm{p}_m\| = \sqrt{(u - x_m)^2 + (v - y_m)^2 + L_z^2}$表示用户与第$m$个捏合天线之间的物理距离。
+电磁波被捏合天线耦合进介质波导后，沿着波导向基站馈电点传输。在理想无损波导假设下，电磁波在波导内的传输仅引入额外的相位偏移。因此，第$m$条波导的传输响应函数$g_m$可以表示为：
+\begin{equation}\label{eq:pass_channel_gm}
+	g_m = e^{-j\frac{2\pi}{\lambda_g} x_m},
+\end{equation}
+其中，$\lambda_g = \lambda/n_{\mathrm{eff}}$为波导内的导波波长，$n_{\mathrm{eff}}$为波导的有效折射率。
+
+\subsection{上行接收信号模型}
+
+假设用户终端发送的上行数据符号为$s$，满足归一化约束$\mathbb{E}[|s|^2] = 1$，发射功率为$P_t$。则基站端接收到的基带信号向量$\bm{y} \in \mathbb{C}^{M \times 1}$可表示为：
+\begin{equation}\label{eq:pass_signal_model}
+	\bm{y} = \sqrt{P_t} \bm{G} \bm{h} s + \bm{z},
+\end{equation}
+其中，$\bm{G} = \mathrm{diag}(g_1, g_2, \cdots, g_M) \in \mathbb{C}^{M \times M}$表示波导传输矩阵，$\bm{h} = [h_1, h_2, \cdots, h_M]^{\mathrm{T}} \in \mathbb{C}^{M \times 1}$表示用户与捏合天线之间的信道向量，$\bm{z} \sim \mathcal{CN}(\bm{0}, \sigma^2 \bm{I}_M)$表示基站接收机引入的加性高斯白噪声，$\sigma^2$为噪声功率。
+
+基站采用最大比合并接收机对多天线信号进行合并处理，以最大化接收信号的信噪比。根据MRC准则，基站端通过对接收信号左乘等效端到端信道的共轭转置来进行相位对齐与信号合并。
+定义线性合并向量 $\bm{w} = \bm{G}\bm{h}$，则经过MRC处理后的输出标量信号 $\hat{s}$ 可表示为：
+\begin{equation}\label{eq:pass_mrc_signal}
+	\hat{s} = \bm{w}^{\mathrm{H}} \bm{y} = (\bm{G}\bm{h})^{\mathrm{H}} (\sqrt{P_t} \bm{G} \bm{h} s + \bm{z}) = \sqrt{P_t}\|\bm{G}\bm{h}\|^2 s + (\bm{G}\bm{h})^{\mathrm{H}} \bm{z}.
+\end{equation}
+
+在式~\eqref{eq:pass_mrc_signal}中，有用信号分量的功率为 $P_{\mathrm{sig}} = P_t \|\bm{G}\bm{h}\|^4$，合并后的有效噪声功率为 $P_{\mathrm{noise}} = \mathbb{E}[|(\bm{G}\bm{h})^{\mathrm{H}} \bm{z}|^2] = \sigma^2 \|\bm{G}\bm{h}\|^2$。因此，信噪比可表示为：
+\begin{equation}\label{eq:pass_snr_def}
+	\mathrm{SNR} = \frac{P_{\mathrm{sig}}}{P_{\mathrm{noise}}} = \frac{P_t \|\bm{G}\bm{h}\|^2}{\sigma^2}.
+\end{equation}
+由于波导传输矩阵 $\bm{G}$ 为对角阵，且其对角线元素仅包含相位偏转，满足$|g_m| = 1$，说明波导传输过程不会改变信号的能量，即 $\|\bm{G}\bm{h}\|^2 = \|\bm{h}\|^2$。
+结合式~\eqref{eq:pass_channel_hm}，系统信噪比可以展开为与所有捏合天线位置$\bm{x} = [x_1, x_2, \cdots, x_M]^{\mathrm{T}}$相关的表达式：
+\begin{align}\label{eq:pass_snr_final}
+	\mathrm{SNR}(\bm{x}) &= \frac{P_t}{\sigma^2} \|\bm{h}\|^2 
+	= \frac{P_t \eta}{\sigma^2} \sum_{m=1}^M \frac{1}{\|\bm{p}_U - \bm{p}_m\|^2} \nonumber \\
+	&= \frac{P_t \eta}{\sigma^2} \sum_{m=1}^M \frac{1}{(u - x_m)^2 + (v - y_m)^2 + L_z^2}.
+\end{align}
+
+\section{最优天线位置与理论性能分析}
+
+在上一节建立的接收信号模型基础上，本节将首先推导最优天线位置对齐策略及其平均信噪比闭式解，随后基于大阵列渐近，推导PASS系统的空间中断概率。
+
+\subsection{最优对齐策略与平均信噪比推导}
+
+由式~\eqref{eq:pass_snr_final}可知，为了在给定用户位置 $(u, v)$ 的前提下最大化系统通信性能，需要最小化电磁波在自由空间中的大尺度路径损耗。
+因此，当且仅当所有捏合天线均滑动至与用户 $x$ 轴坐标对齐时，各天线到用户的欧氏距离达到极小值，即：
+\begin{equation}\label{eq:pass_optimal_xm}
+	x_m^\ast = u, \quad \forall m \in \{1, 2, \cdots, M\}.
+\end{equation}
+将式~\eqref{eq:pass_optimal_xm}代入式~\eqref{eq:pass_snr_final}，可得到当前用户位置下的最大信噪比：
+\begin{equation}\label{eq:pass_snr_max}
+	\mathrm{SNR}_{\max}(v) = \frac{P_t \eta}{\sigma^2} \sum_{m=1}^M \frac{1}{(v - y_m)^2 + L_z^2}.
+\end{equation}
+
+上式表明，系统的最大信噪比仅依赖于用户的 $y$ 轴坐标 $v$，而与 $x$ 轴坐标无关。为了进一步评估捏合天线系统在目标覆盖区域内的整体通信能力，下面的定理给出了系统在用户服务平面内的平均信噪比。
+
+\begin{theorem}\label{the:pass_avg_snr}
+	假设用户在服务区域$\mathcal{D} = \{ (u,v) \mid 0 \le u \le L_x, 0 \le v \le L_y \}$内服从均匀分布。
+	当捏合天线系统采用 $x_m^\ast = u$ 的最优对齐策略时，系统的平均接收信噪比为：
+	\begin{equation}\label{eq:pass_avg_snr}
+		\overline{\mathrm{SNR}} = \frac{P_t \eta}{\sigma^2 L_y L_z} \sum_{m=1}^M \left[ \arctan\left(\frac{L_y - y_m}{L_z}\right) + \arctan\left(\frac{y_m}{L_z}\right) \right].
+	\end{equation}
+	进一步地，当系统部署的波导数量 $M$ 较大时，上述平均信噪比可渐近近似为：
+	\begin{equation}\label{eq:pass_avg_snr_approx}
+		\overline{\mathrm{SNR}} \approx \frac{P_t \eta}{\sigma^2} \left[ \frac{2M-1}{L_y L_z} \arctan\left(\frac{L_y}{L_z}\right) - \frac{M-1}{L_y^2} \ln\left(1 + \frac{L_y^2}{L_z^2}\right) \right].
+	\end{equation}
+\end{theorem}
+
+\begin{proof}
+	由于用户坐标 $(u,v)$ 在区域 $\mathcal{D}$ 内均匀分布，SNR的期望可以表示为：
+	\begin{equation}\label{eq:pass_avg_snr_proof_step1}
+		\overline{\mathrm{SNR}} = \frac{1}{L_x L_y} \int_0^{L_y} \left( \int_0^{L_x} \mathrm{SNR}_{\max}(v) \, \mathrm{d}u \right) \mathrm{d}v = \frac{P_t \eta}{\sigma^2 L_y} \sum_{m=1}^M \int_0^{L_y} \frac{1}{(v - y_m)^2 + L_z^2} \, \mathrm{d}v.
+	\end{equation}
+	利用标准积分公式 $\int \frac{1}{x^2 + a^2} \, \mathrm{d}x = \frac{1}{a} \arctan(\frac{x}{a})$，可求得单项的定积分结果为：
+	\begin{equation}\label{eq:pass_avg_snr_proof_step2}
+		\int_0^{L_y} \frac{1}{(v - y_m)^2 + L_z^2} \, \mathrm{d}v = \frac{1}{L_z} \left[ \arctan\left(\frac{L_y - y_m}{L_z}\right) + \arctan\left(\frac{y_m}{L_z}\right) \right].
+	\end{equation}
+	将式~\eqref{eq:pass_avg_snr_proof_step2}代回式~\eqref{eq:pass_avg_snr_proof_step1}即可得到式~\eqref{eq:pass_avg_snr}。
+	
+	当 $M$ 较大时，相邻波导间距 $\Delta y = \frac{L_y}{M-1}$ 较小，令式~\eqref{eq:pass_avg_snr}中的求和项为$g(y) = \arctan(\frac{L_y - y}{L_z}) + \arctan(\frac{y}{L_z})$，根据欧拉–麦克劳林公式的一阶修正，离散求和可近似展开为：
+	\begin{equation}\label{eq:pass_avg_snr_proof_step3}
+		\sum_{m=1}^M g(y_m) \approx \frac{1}{\Delta y} \int_0^{L_y} g(y) \, \mathrm{d}y + \frac{g(0) + g(L_y)}{2},
+	\end{equation}
+	其中$g(0) = g(L_y) = \arctan(\frac{L_y}{L_z})$。
+	对于连续积分项，利用$g(y)$的对称性，有：
+	\begin{equation}\label{eq:pass_avg_snr_proof_step4}
+		\int_0^{L_y} g(y) \, \mathrm{d}y = 2 \int_0^{L_y} \arctan\left(\frac{y}{L_z}\right) \mathrm{d}y = 2 \left[ L_y \arctan\left(\frac{L_y}{L_z}\right) - \frac{L_z}{2} \ln\left(1 + \frac{L_y^2}{L_z^2}\right) \right].
+	\end{equation}
+	将式~\eqref{eq:pass_avg_snr_proof_step3}，式~\eqref{eq:pass_avg_snr_proof_step4}代入式~\eqref{eq:pass_avg_snr}，即可得到式~\eqref{eq:pass_avg_snr_approx}，定理得证。
+\end{proof}
+
+定理~\ref{the:pass_avg_snr}从理论上揭示了捏合天线系统通信性能的基本边界与阵列增益特性。由于天线的自适应对齐抵消了$x$轴维度的距离变化，系统的平均信噪比与覆盖区域的长度$L_x$无关。这表明捏合天线系统在长廊、隧道等条状覆盖场景中具有一定的技术优势，相比传统固定基站，能够覆盖远端用户的信号盲区。
+渐近解析解~\eqref{eq:pass_avg_snr_approx}剥离了求和算子，表明了在最优对齐策略下，平均信噪比与波导总数$M$呈现线性增长关系，印证了捏合天线系统同样具备阵列增益特性。
+
+\subsection{空间中断概率与通信可靠性分析}
+
+平均信噪比反映了捏合天线系统的整体覆盖能力，但在实际通信系统中，保障处于覆盖区边缘用户的通信可靠性同样至关重要。
+为此，引入空间中断概率作为可靠性评估指标，其定义为用户在给定空间中随机分布的情况下，系统瞬时接收信噪比低于预设通信门限 $\gamma_{\mathrm{th}}$ 的概率，即 $P_{\mathrm{out}}(\gamma_{\mathrm{th}}) = \mathrm{Pr}(\mathrm{SNR} < \gamma_{\mathrm{th}})$。
+基于前述的大 $M$ 渐近条件，进一步推导出空间中断概率的闭式表达式，如下述命题所示。
+
+\begin{proposition}\label{pro:pass_outage_prob}
+	假设用户在服务区域$\mathcal{D} = \{ (u,v) \mid 0 \le u \le L_x, 0 \le v \le L_y \}$内服从均匀分布。
+	在天线数量$M$较大的渐近条件下，系统的空间中断概率为：
+	\begin{equation}\label{eq:pass_outage_prob}
+		P_{\mathrm{out}}(\gamma_{\mathrm{th}}) =
+		\begin{cases}
+			0, & \gamma_{\mathrm{th}} \le \gamma_{\min}, \\
+			1 - \sqrt{1 - 4\left(\frac{L_z}{L_y}\right)^2 + \frac{4L_z}{L_y}\cot\left(\frac{\gamma_{\mathrm{th}}}{C}\right)}, & \gamma_{\min} < \gamma_{\mathrm{th}} < \gamma_{\max}, \\
+			1, & \gamma_{\mathrm{th}} \ge \gamma_{\max},
+		\end{cases}
+	\end{equation}
+	其中，常数$C = \frac{P_t \eta (M-1)}{\sigma^2 L_y L_z}$，$\gamma_{\min} = C \arctan\left(\frac{L_y}{L_z}\right)$，$\gamma_{\max} = 2C \arctan\left(\frac{L_y}{2L_z}\right)$。
+\end{proposition}
+
+\begin{proof}
+	由式~\eqref{eq:pass_snr_max}可知，系统的最大信噪比仅取决于用户的纵坐标$v$，在波导数量$M$较大的条件下，连续渐近下的SNR可表示为：
+	\begin{align}\label{eq:pass_snr_v_approx}
+		\mathrm{SNR}(v) &\approx \frac{P_t \eta}{\sigma^2} \frac{M-1}{L_y} \int_0^{L_y} \frac{1}{(v - y)^2 + L_z^2} \,\mathrm{d}y \nonumber \\
+		&= C \left[ \arctan\left(\frac{v}{L_z}\right) + \arctan\left(\frac{L_y - v}{L_z}\right) \right].
+	\end{align}
+	对$\mathrm{SNR}(v)$关于$v$求导，可得：
+	\begin{equation}
+		\frac{\mathrm{d}(\mathrm{SNR}(v))}{\mathrm{d}v} = C \left[ \frac{1/L_z}{1 + (v/L_z)^2} - \frac{1/L_z}{1 + ((L_y - v)/L_z)^2} \right].
+	\end{equation}
+	令导数为0，有：$v^2 = (L_y - v)^2$，解得区间$[0, L_y]$内的唯一驻点为$v = L_y/2$。
+	通过单调性分析可知，$\mathrm{SNR}(v)$在区间$[0, L_y/2]$上单调递增，在$[L_y/2, L_y]$上单调递减，且关于中心线$v = L_y/2$呈轴对称分布。
+	因此，信噪比的边界值为最小值$\gamma_{\min} = \mathrm{SNR}(0) = C \arctan\left(\frac{L_y}{L_z}\right)$，中心值为最大值$\gamma_{\max} = \mathrm{SNR}(L_y/2) = 2C \arctan\left(\frac{L_y}{2L_z}\right)$。
+	
+	根据空间中断概率的定义可知，当 $\gamma_{\mathrm{th}} \le \gamma_{\min}$ 时，全区域满足通信要求，无中断发生；当 $\gamma_{\mathrm{th}} \ge \gamma_{\max}$ 时，全区域均无法满足要求，通信完全中断。
+	当 $\gamma_{\min} < \gamma_{\mathrm{th}} < \gamma_{\max}$ 时，中断发生在靠近端点的两个边缘区域，即$v \in [0, v_1) \cup (v_2, L_y]$，$v_1,v_2$是方程$\mathrm{SNR}(v) = \gamma_{\mathrm{th}}$的根。对方程两边同时取正切，利用正切函数的和角公式可得：
+	\begin{equation}
+		\tan\left(\frac{\gamma_{\mathrm{th}}}{C}\right) = \frac{\frac{v}{L_z} + \frac{L_y - v}{L_z}}{1 - \frac{v(L_y - v)}{L_z^2}} = \frac{L_y L_z}{L_z^2 - L_y v + v^2}.
+	\end{equation}
+	整理可得关于$v$的一元二次方程：
+	\begin{equation}
+		v^2 - L_y v + L_z^2 - L_y L_z \cot\left(\frac{\gamma_{\mathrm{th}}}{C}\right) = 0.
+	\end{equation}
+	根据一元二次方程求根公式，覆盖达标区域的长度为：
+	\begin{equation}
+		\Delta v = v_2 - v_1 = \sqrt{L_y^2 - 4L_z^2 + 4L_y L_z \cot(\frac{\gamma_{\mathrm{th}}}{C})}.
+	\end{equation}
+	则中断概率为中断区间长度与总长度的比$P_{\mathrm{out}}(\gamma_{\mathrm{th}}) = \frac{L_y - \Delta v}{L_y}$，将 $\Delta v$ 代入即得式~\eqref{eq:pass_outage_prob}。命题得证。
+\end{proof}
+
+命题~\ref{pro:pass_outage_prob}说明当用户位于边缘区域时，由于远端波导上的天线到用户的传播距离增加，导致系统容易在边缘处发生通信中断。
+为了保证边缘用户的服务质量，除了增加发射功率外，增加波导部署密度也是降低中断概率的直接途径，在实际PASS系统应综合服务区域面积和信噪比要求来确定部署的波导数量。
+
+\section{基于圆形几何的交替天线配置与定位算法}
+
+上一节的分析表明，当捏合天线系统用于通信传输时，最优的天线配置策略是将所有捏合天线动态滑动并对齐至用户的横坐标。
+这说明基站准确获取用户的位置坐标是执行动态波束赋形和提升通信性能的前提。
+然而，在实际的通信场景中，用户位置往往是未知的信息，需要依靠接收到的上行导频信号进行估计。
+如果PASS系统采用固定的天线几何构型，例如使用通信最优的共线排布进行位置估计，会使得空间分集缺失，从而难以提供高精度的定位结果。
+因此，为了精准获取用户位置以支撑后续的波束赋形，同时挖掘PASS系统在定位感知方面的潜力，本节将利用捏合天线位置的动态可重构特性，重塑空间传播几何构型，提出一种联合用户位置估计与天线几何配置的优化框架。
+
+\subsection{基于FIM的定位问题建模}
+
+为了实现高精度的用户定位并优化天线配置，首先需要在初始天线状态下获取用户位置的粗估计。随后，对位置估计的理论误差下界进行分析，建立位置估计误差最小化的天线放置问题。
+
+在给定的初始天线配置下，基站可以通过经典的二维多重信号分类算法对用户的平面坐标 $\bm{p}_U = [u, v, 0]^{\mathrm{T}}$ 进行初步估计\cite{schmidt1986multiple}。
+假设用户在 $T$ 个连续快拍内发送导频序列 $\bm{s} = [s_1, s_2, \cdots, s_T]^{\mathrm{T}} \in \mathbb{C}^{T \times 1}$，根据前文建立的式~\eqref{eq:pass_signal_model}，基站端接收到的信号矩阵 $\bm{Y} = [\bm{y}_1, \bm{y}_2, \cdots, \bm{y}_T] \in \mathbb{C}^{M \times T}$ 可表示为：
+\begin{equation}\label{eq:pass_music_Y}
+	\bm{Y} = \sqrt{P_t} \bm{G} \bm{h} \bm{s}^{\mathrm{T}} + \bm{Z},
+\end{equation}
+其中，$\bm{Z} = [\bm{z}_1, \bm{z}_2, \cdots, \bm{z}_T] \in \mathbb{C}^{M \times T}$ 为加性高斯白噪声矩阵。
+接收信号的样本协方差矩阵可计算为：
+\begin{equation}\label{eq:pass_music_R}
+	\hat{\bm{R}} = \frac{1}{T} \bm{Y} \bm{Y}^{\mathrm{H}}.
+\end{equation}
+
+对协方差矩阵 $\hat{\bm{R}}$ 进行奇异值分解，将其划分为信号子空间与噪声子空间：
+\begin{equation}\label{eq:pass_music_svd}
+	\hat{\bm{R}} = \bm{w}_s \Lambda_s \bm{w}_s^{\mathrm{H}} + \bm{W}_z \bm{\Lambda}_z \bm{W}_z^{\mathrm{H}},
+\end{equation}
+其中，信号子空间由对应最大奇异值$\Lambda_s$的左奇异列向量 $\bm{w}_s \in \mathbb{C}^{M \times 1}$ 构成；$\bm{W}_z \in \mathbb{C}^{M \times (M-1)}$ 为对应其余 $(M-1)$ 个较小奇异值的左奇异矩阵，代表噪声子空间；$\bm{\Lambda}_z \in \mathbb{R}^{(M-1) \times (M-1)}$ 为包含这些噪声奇异值的对角矩阵。
+
+定义潜在用户位置 $(u,v)$ 对应的阵列导向矢量为 $\bm{a}(u,v) \triangleq \bm{G} \bm{h}(u,v)$。根据 MUSIC 算法的正交性原理，真实用户位置 $(\bar{u}, \bar{v})$ 对应的导向矢量位于信号子空间内，因而与噪声子空间正交，即 $\bm{W}_z^{\mathrm{H}} \bm{a}(\bar{u}, \bar{v}) = \bm{0}$。因此，可构造二维MUSIC空间谱函数如下：
+\begin{equation}\label{eq:pass_music_spectrum}
+	P_{\mathrm{MUSIC}}(u,v) = \frac{1}{\bm{a}^{\mathrm{H}}(u,v)\bm{W}_z \bm{W}_z^{\mathrm{H}}\bm{a}(u,v)}.
+\end{equation}
+通过在目标服务区域内搜索空间谱的谱峰，即可获得用户位置的估计$(\hat{u}, \hat{v})$：
+\begin{equation}\label{eq:pass_music_peak}
+	(\hat{u}, \hat{v}) = \mathop{\arg\max}_{u \in [0,L_x], v \in [0,L_y]} P_{\mathrm{MUSIC}}(u,v).
+\end{equation}
+
+上式的估计精度受限于当前固定的天线几何位置。因此，将天线位置 $\bm{x} = [x_1, x_2, \cdots, x_M]^{\mathrm{T}}$ 作为可调优化的变量，进一步改善传播几何结构，是提升定位精度的关键。在复高斯观测模型下，任意无偏估计量对用户位置 $(u,v)$ 的估计性能受限于克拉美-罗下界。具体而言，二维位置估计的均方误差满足以下不等式：
+\begin{equation}\label{eq:pass_mse_crlb}
+	\mathrm{MSE}(u,v) = \mathbb{E}\left[ (u-\hat{u})^2+(v-\hat{v})^2 \right] \geq \mathrm{tr}\left( \bm{J}^{-1}(u, v) \right),
+\end{equation}
+其中，$\bm{J}(u, v) \in \mathbb{R}^{2 \times 2}$ 为费雪信息矩阵。
+
+依据式~\eqref{eq:pass_signal_model}的系统模型，可知接收信号$\bm{y} \sim \mathcal{CN}(\bm{\mu}(u,v), \sigma^2 \bm{I}_M)$，其中，均值向量为$\bm{\mu}(u,v) = \sqrt{P_t} \bm{G} \bm{h}(u,v) s$。
+FIM 的第$(i,j)$个元素可由均值向量对参量的偏导数内积求得：
+\begin{equation}\label{eq:pass_slepian_bangs}
+	[\bm{J}]_{i,j} = \frac{2}{\sigma^2} \Re \left\{ \left( \frac{\partial \bm{\mu}}{\partial \theta_i} \right)^{\mathrm{H}} \left( \frac{\partial \bm{\mu}}{\partial \theta_j} \right) \right\}, \quad i, j \in \{1, 2\},
+\end{equation}
+其中$\theta_1 = u,\, \theta_2 = v$。
+由于波导传输矩阵 $\bm{G}$ 是仅包含相位信息的对角阵，且不依赖于用户坐标 $(u,v)$，因此满足酉矩阵性质 $\bm{G}^{\mathrm{H}}\bm{G} = \bm{I}_M$。在计算偏导数时，$\bm{G}$ 的影响被抵消，例如对于横坐标$u$，有：
+\begin{equation}\label{eq:pass_fim_deriv}
+	\left( \frac{\partial \bm{\mu}}{\partial u} \right)^{\mathrm{H}} \left( \frac{\partial \bm{\mu}}{\partial u} \right) = P_t |s|^2 \left( \frac{\partial \bm{h}}{\partial u} \right)^{\mathrm{H}} \bm{G}^{\mathrm{H}} \bm{G} \left( \frac{\partial \bm{h}}{\partial u} \right) = P_t \left\| \frac{\partial \bm{h}}{\partial u} \right\|^2,
+\end{equation}
+其中，$\frac{\partial \bm{h}}{\partial u}$ 和 $\frac{\partial \bm{h}}{\partial v}$ 分别表示用户与捏合天线之间的信道向量相对于用户二维坐标的梯度。
+同理可求得其他的偏导数项，将所有项代入式~\eqref{eq:pass_slepian_bangs}中，得到FIM的表达式：
+\begin{equation}\label{eq:pass_fim_matrix}
+	\bm{J}(u,v) = \frac{2 P_t}{\sigma^2} \,
+	\Re \left\{
+	\begin{bmatrix}
+		\left\| \frac{\partial \bm{h}}{\partial u} \right\|^2 & \left( \frac{\partial \bm{h}}{\partial u} \right)^{\mathrm{H}} \frac{\partial \bm{h}}{\partial v} \\
+		\left( \frac{\partial \bm{h}}{\partial v} \right)^{\mathrm{H}} \frac{\partial \bm{h}}{\partial u} & \left\| \frac{\partial \bm{h}}{\partial v} \right\|^2
+	\end{bmatrix}
+	\right\}.
+\end{equation}
+
+从式~\eqref{eq:pass_fim_matrix}中可以看出，FIM中的梯度项仅依赖于信道$\bm{h}$，受天线位置坐标$\bm{x}$的影响。为了最大化接收信号中所蕴含的位置信息，实现定位误差下界的最小化，可以通过调整天线位置 $\bm{x}$ 来最小化 FIM 逆矩阵的迹。由此，可建立如下的天线位置优化问题：
+\begin{equation}\label{eq:pass_prob_p1}
+	\begin{aligned}
+		\min_{\bm{x}} \quad & \mathrm{tr}\left( \bm{J}^{-1}(\bm{x}, u, v) \right), \\
+		\text{s.t.} \quad & 0 \leq x_m \leq L_x, \quad m = 1, 2, \cdots, M.
+	\end{aligned}
+\end{equation}
+
+优化问题~\eqref{eq:pass_prob_p1}准确地刻画了最小化定位误差下界的理论准则。然而，由于对FIM的求逆操作引入了非线性的强耦合项，各个捏合天线坐标 $x_m$ 之间相互依赖，问题高度非凸，需要通过复杂的优化方法解决，不存在闭式表达式。接下来的小节将对该目标函数进行合理的松弛与推导，以揭示定位导向的最优几何分布形态。
+
+\subsection{定位导向的最优天线几何形态}
+
+为了获得具有物理意义且计算高效的天线几何分布策略，本节引入空间感知中经典的“各向同性误差”假设对问题进行合理松弛化。
+从几何角度看，当缺乏某一方向的观测信息时，该方向的误差将急剧放大并主导总误差，呈现出狭长的误差椭圆。
+因此，最优的捏合天线分布会自然地倾向于从各个正交方向均衡地获取目标信息，在目标周围形成具有高度空间对称性的均匀观测视角，使误差椭圆向正圆收敛。
+在此状态下，$x$轴与$y$轴方向的估计误差方差相近且相关性较弱，故两个正交方向的费雪信息近似相等，即$J_{uu} \approx J_{vv} \triangleq J_0$，交叉耦合项$J_{uv}$趋近于0，可以近似忽略FIM的非对角线元素。
+将上述近似条件代入原目标函数，可得：
+\begin{equation}\label{eq:pass_trJ_inv_approx}
+	\mathrm{tr}(\bm{J}^{-1}) = \frac{J_{uu} + J_{vv}}{J_{uu}J_{vv} - J_{uv}^2} \approx \frac{2J_0}{J_0^2 - 0} = \frac{2}{J_0}.
+\end{equation}
+同时，FIM 的迹可表示为 $\mathrm{tr}(\bm{J}) = J_{uu} + J_{vv} \approx 2J_0$。由此可见，最小化$\mathrm{tr}(\bm{J}^{-1})$与最大化 $\mathrm{tr}(\bm{J})$具有一致性。
+从特征值角度看，设FIM的两个正特征值为$\alpha_1$ 与 $\alpha_2$，根据均值不等式，有：
+\begin{equation}
+	\mathrm{tr}(\bm{J})\,\mathrm{tr}(\bm{J}^{-1}) =
+	(\alpha_1 + \alpha_2)(\alpha_1^{-1} + \alpha_2^{-1})\ge 4,
+\end{equation}
+在各向同性假设下，$\alpha_1=\alpha_2$，不等式取等，同样证明了一致性。
+因此，采用最大化FIM的迹$\mathrm{tr}(\bm{J})$作为替代准则，不仅解除了天线位置变量间的非线性耦合，有效降低了优化复杂度，而且通常能够得到高质量的近似解。替代的优化问题表示如下：
+\begin{equation}\label{eq:pass_prob_p2}
+	\begin{aligned}
+		\max_{\bm{x}} \quad & \mathrm{tr}\left( \bm{J}(\bm{x}, u, v) \right), \\
+		\text{s.t.} \quad & 0 \leq x_m \leq L_x, \quad m = 1, 2, \cdots, M.
+	\end{aligned}
+\end{equation}
+
+针对优化问题~\eqref{eq:pass_prob_p2}，若暂时忽略边界约束，目标函数中蕴含着极具物理指导意义的结构特征。下面的定理给出了能够最大化总体费舍尔信息的最优天线几何分布规律。
+
+\begin{theorem}\label{the:pass_optimal_geometry}
+	在天线可于 $z = L_z$ 平面内任意部署的无约束条件下，优化问题~\eqref{eq:pass_prob_p2} 的最优解为：所有捏合天线均分布在一个以目标用户正上方点 $(u, v, L_z)$ 为圆心的圆周上，且该最优圆周的半径为：
+	\begin{equation}\label{eq:pass_optimal_radius}
+		r^\ast = \sqrt{
+			\frac{
+				- \lambda^2 
+				+ \sqrt{ \lambda^4 + 4\pi^2 \lambda^2 L_z^2 + 16\pi^4 L_z^4 }
+			}{
+				4\pi^2
+		}}.
+	\end{equation}
+\end{theorem}
+
+\begin{proof}
+	根据式~\eqref{eq:pass_fim_matrix}，费雪信息矩阵的迹可以展开为：
+	\begin{equation}\label{eq:pass_trJ_expand}
+		\mathrm{tr}(\bm{J}) = \frac{2P_t}{\sigma^2} \sum_{m=1}^{M} \left( \left| \frac{\partial h_m}{\partial u} \right|^2 + \left| \frac{\partial h_m}{\partial v} \right|^2 \right),
+	\end{equation}
+	其中$h_m = \sqrt{\eta} d_m^{-1} e^{-j\frac{2\pi}{\lambda} d_m}$，$d_m = \|\bm{p}_U - \bm{p}_m\|$。
+	
+	对 $h_m$ 关于横坐标 $u$ 求偏导可得：
+	\begin{equation}\label{eq:pass_hm_deriv_u}
+		\frac{\partial h_m}{\partial u} = h_m \left( -\frac{1}{d_m} - j \frac{2\pi}{\lambda} \right) \frac{\partial d_m}{\partial u}, \quad \text{其中} \quad \frac{\partial d_m}{\partial u} = \frac{u - x_m}{d_m}.
+	\end{equation}
+	计算关于$u$的偏导数的模平方，可得：
+	\begin{equation}\label{eq:pass_hm_deriv_u_sq}
+		\left| \frac{\partial h_m}{\partial u} \right|^2 = \eta \frac{(u-x_m)^2}{d_m^6} \left(1 + \frac{4\pi^2 d_m^2}{\lambda^2}\right).
+	\end{equation}
+	同理，对纵坐标 $v$ 的偏导数的模平方为：
+	\begin{equation}\label{eq:pass_hm_deriv_v_sq}
+		\left| \frac{\partial h_m}{\partial v} \right|^2 = \eta \frac{(v-y_m)^2}{d_m^6} \left(1 + \frac{4\pi^2 d_m^2}{\lambda^2}\right).
+	\end{equation}
+	
+	将式~\eqref{eq:pass_hm_deriv_u_sq}与式~\eqref{eq:pass_hm_deriv_v_sq}代入式~\eqref{eq:pass_trJ_expand}，并利用几何关系 $(u-x_m)^2 + (v-y_m)^2 = d_m^2 - L_z^2$，可将 $\mathrm{tr}(\bm{J})$ 化简为关于距离 $d_m$ 的函数：
+	\begin{equation}\label{eq:pass_trJ_final}
+		\mathrm{tr}(\bm{J}) = \frac{2P_t \eta}{\sigma^2} \sum_{m=1}^M \left(1 + \frac{4\pi^2 d_m^2}{\lambda^2}\right) \left(\frac{1}{d_m^4} - \frac{L_z^2}{d_m^6}\right).
+	\end{equation}
+	
+	式~\eqref{eq:pass_trJ_final}表明，最大化迹的目标函数可以完全解耦为$M$个独立子问题。忽略常数项，定义单个天线对目标函数的贡献函数为 $f(d)$，有：
+	\begin{equation}\label{eq:pass_func_d}
+		f(d) = \left(1 + \frac{4\pi^2 d^2}{\lambda^2}\right) \left(\frac{1}{d^4} - \frac{L_z^2}{d^6}\right),\, d \ge L_z.
+	\end{equation}
+	对 $f(d)$ 关于 $d$ 求导：
+	\begin{equation}\label{eq:pass_func_d_deriv}
+		f'(d) = \frac{1}{d^7} \left( -4d^2 + 6L_z^2 - \frac{8\pi^2}{\lambda^2} d^4 + \frac{16\pi^2 L_z^2}{\lambda^2} d^2 \right).
+	\end{equation}
+	令 $f'(d) = 0$，可将其转化为关于 $d^2$ 的一元二次方程：
+	\begin{equation}\label{eq:pass_d_quadratic}
+		4\pi^2 (d^2)^2 + (2\lambda^2 - 8\pi^2 L_z^2) d^2 - 3\lambda^2 L_z^2 = 0.
+	\end{equation}
+	求解该方程并舍去负根，可得到最优距离$d^\ast$：
+	\begin{equation}\label{eq:pass_d_ast}
+		d^\ast = \sqrt{ \frac{ (4\pi^2 L_z^2 - \lambda^2) + \sqrt{ (\lambda^2 - 4\pi^2 L_z^2)^2 + 12\pi^2 \lambda^2 L_z^2 } }{4\pi^2} }.
+	\end{equation}
+	由于所有捏合天线均被约束在高度为 $L_z$ 的平面内，其对应的最优水平投影半径为 $r^\ast = \sqrt{(d^\ast)^2 - L_z^2}$。将式~\eqref{eq:pass_d_ast}代入并化简，即可得到式~\eqref{eq:pass_optimal_radius}，定理得证。
+\end{proof}
+
+定理~\ref{the:pass_optimal_geometry}给出了最大化$\mathrm{tr}(\bm{J})$的最优半径表达式。在实际的微波或毫米波频段PASS系统中，由于工作波长通常远小于波导安装高度，上述表达式可以进一步简化，如下面的推论所示。
+
+\begin{corollary}\label{cor:pass_high_freq}
+	当系统满足高频近似条件 $L_z \gg \lambda$ 时，最优圆形阵列的半径可简化为：
+	\begin{equation}\label{eq:pass_r_ast_approx}
+		r^\ast \approx L_z - \frac{\lambda^2}{16\pi^2 L_z} \approx L_z.
+	\end{equation}
+\end{corollary}
+
+\begin{proof}
+	定义$\varepsilon = \lambda/L_z \ll 1$。提取式~\eqref{eq:pass_optimal_radius}最内层根号中的 $16\pi^4 L_z^4$ 作为公因式，内部的二次根号项可以写为：
+	\begin{equation}
+		\sqrt{ \lambda^4 + 4\pi^2 \lambda^2 L_z^2 + 16\pi^4 L_z^4 } = 4\pi^2 L_z^2 \sqrt{ 1 + \frac{\varepsilon^2}{4\pi^2} + \frac{\varepsilon^4}{16\pi^4} }.
+	\end{equation}
+	忽略高阶小量$\varepsilon^4/(16\pi^4)$，并利用一阶泰勒展开式 $\sqrt{1+x} \approx 1 + x/2$，该项可近似为：
+	\begin{equation}
+		4\pi^2 L_z^2 \left( 1 + \frac{\varepsilon^2}{8\pi^2} \right) = 4\pi^2 L_z^2 + \frac{1}{2}\lambda^2.
+	\end{equation}
+
+	将上述近似结果代回式~\eqref{eq:pass_optimal_radius}中化简，由于 $\frac{\lambda^2}{8\pi^2 L_z^2} \ll 1$，对最外层根号再次运用一阶泰勒展开 $\sqrt{1-x} \approx 1 - x/2$，可得：
+	\begin{equation}
+		r^\ast \approx \sqrt{ \frac{-\lambda^2 + 4\pi^2 L_z^2 + \frac{1}{2}\lambda^2}{4\pi^2} } = L_z \sqrt{ 1 - \frac{\lambda^2}{8\pi^2 L_z^2} } \approx L_z \left( 1 - \frac{\lambda^2}{16\pi^2 L_z^2} \right) \approx L_z.
+	\end{equation}
+	推论得证。
+\end{proof}
+
+推论~\ref{cor:pass_high_freq}为确定理想的天线圆排布提供了一条直观的准则：最优捏合天线半径等于波导的部署高度。
+考虑到实际中天线只能沿着特定的波导滑动，通过将理想圆周上的点投影至最近的可行域边界内，可计算出实际可行的第$m$个捏合天线目标位置：
+\begin{equation}\label{eq:pass_xm_clip}
+	x_m^\ast = 
+	\begin{cases}
+		\mathop{\mathrm{clip}}\limits_{[0,\,L_x]}\!\left( u \pm \sqrt{(r^\ast)^2 - (v - y_m)^2} \right), & r^\ast > |v - y_m|, \\
+		u, & \text{其它},
+	\end{cases}
+\end{equation}
+其中，操作符 $\mathrm{clip}(\cdot)$ 用于将坐标截断，约束在波导的物理长度 $[0, L_x]$ 内。对于穿过目标圆的波导，在实际排布中可以交替分配正负号以确保天线阵列的几何对称性，进一步减弱 $u$ 和 $v$ 两个维度的估计误差之间的耦合。
+
+对比本节基于定位感知的最优圆形分布与上一节基于通信传输的最优共线分布，揭示了捏合天线系统中通信与感知功能之间的内在矛盾：将所有捏合天线对齐于用户正上方能够最大化阵列接收增益与通信信噪比，但这种共线的构型会引起严重的几何精度衰减，导致定位精度较差；相反，最优定位要求天线分散部署于特定的圆环轨迹上以构建丰富的多视角观测，但这不可避免地增加了大尺度路径损耗，降低了通信速率。
+
+\subsection{CG-APPL算法设计}
+
+结合前文建立的二维MUSIC定位估计方法与基于费雪信息最大化的天线几何配置策略，本小节提出一种基于圆形几何的交替天线配置与定位算法。该算法通过交替迭代的方式，逐步优化用户位置估计与捏合天线的几何分布，其核心思想如下：首先利用初始的天线阵列构型获取用户位置的粗估计；随后，根据该估计位置计算最优的观测圆半径，并驱动捏合天线向理想的圆形几何分布滑动以重构阵列；在新构型下，能够获取包含更高费雪信息的观测数据，从而在后续迭代中实现更高精度的位置估计。
+
+随着上述交替迭代过程的不断深入，天线构型逐渐逼近用户正上方的最优圆周，定位误差稳步收敛。当两次相邻迭代间的用户估计位置变化量低于预设的阈值，或达到最大迭代次数 $I$ 时，算法终止。
+CG-APPL算法的完整执行流程总结于算法~\ref{alg:pass_cg_appl}中。
+
+\begin{algorithm}[!htbp]
+	\caption{基于圆形几何的交替天线配置与定位算法（CG-APPL）}
+	\label{alg:pass_cg_appl}
+	\begin{algorithmic}[1]
+		\REQUIRE 初始天线位置向量 $\bm{x}^{(1)}$，最大迭代次数 $I$。
+		\ENSURE 最终的用户位置估计 $(\hat{u}, \hat{v})$。
+		\FOR{$i = 1, 2, \cdots, I$}
+		\STATE \textbf{// 步骤 1：位置估计更新}
+		\STATE 在当前天线配置 $\bm{x}^{(i)}$ 下获取接收导频信号矩阵 $\bm{Y}^{(i)}$；
+		\STATE 根据式~\eqref{eq:pass_music_R}计算样本协方差矩阵 $\hat{\bm{R}}$，并按式~\eqref{eq:pass_music_svd}进行奇异值分解；
+		\STATE 求解式~\eqref{eq:pass_music_peak}，通过二维空间谱搜索获得当前用户位置估计 $(\hat{u}^{(i)}, \hat{v}^{(i)})$；
+		\STATE \textbf{// 步骤 2：天线位置更新}
+		\STATE 依据式~\eqref{eq:pass_optimal_radius}或高频近似式~\eqref{eq:pass_r_ast_approx}计算最优半径 $(r^\ast)^{(i)}$；
+		\STATE 根据投影映射公式~\eqref{eq:pass_xm_clip}交替分配符号，更新各捏合天线位置$\bm{x}^{(i+1)}$；
+		\STATE \textbf{若} $\|(\hat{u}^{(i)}, \hat{v}^{(i)}) - (\hat{u}^{(i-1)}, \hat{v}^{(i-1)})\|_2$ 小于预设阈值 \textbf{则} 提前终止迭代；
+		\ENDFOR
+		\RETURN 最终用户位置估计 $(\hat{u}, \hat{v}) = (\hat{u}^{(I)}, \hat{v}^{(I)})$。
+	\end{algorithmic}
+\end{algorithm}
+
+
+\section{数值仿真分析}
+
+本节通过蒙特卡洛仿真，验证本章所提的捏合天线通信理论性能分析结果以及CG-APPL算法的有效性。本节首先介绍系统的默认参数设置与对比基准方案；随后，验证不同波导部署数量下的平均信噪比与空间中断概率的理论解；最后，深入分析所提定位算法在不同导频开销、发射功率、空间几何条件下的定位精度。
+%，并揭示捏合天线系统在通信与感知功能之间的性能折中关系。
+
+
+\subsection{仿真参数设置与基准方案}
+
+为了贴近实际的室内捏合天线部署场景，本节设定目标服务区域$\mathcal{D}$的长、宽分别为 $L_x = 10 \text{ m}$ 与 $L_y = 10 \text{ m}$，捏合波导水平悬挂于 $L_z = 3 \text{ m}$ 的天花板高度。系统默认部署波导数量为 $M = 10$，均匀分布在 $y$ 轴方向上。
+系统工作于典型的微波频段，载波频率设定为 $f_c = 1 \text{ GHz}$。在此工作频率下，波导高度 $L_z$ 远大于波长 $\lambda$，满足$L_z \gg \lambda$的高频近似条件。
+在提出的联合定位算法中，二维 MUSIC 空间谱的峰值搜索采用“粗-精”两阶段搜索策略，不仅消除了粗网格量化带来的误差，还降低了搜索的复杂度。
+除非在具体仿真中另有说明，本节的所有数值仿真均采用表~\ref{tab:pass_sim_params}中列出的默认参数，且所有结果均通过$N_{\mathrm{mc}}$次蒙特卡洛随机试验取平均得到，每次试验中的用户位置在服务区域$\mathcal{D}$内随机生成。
+
+\begin{table}[!htbp]
+	\centering
+	\caption{捏合天线系统仿真参数表}
+	\label{tab:pass_sim_params}
+	\begin{tabular}{cc}
+		\toprule
+		\textbf{参数} & \textbf{数值} \\
+		\midrule
+		服务区域长度 $L_x$ / 宽度 $L_y$ & $10 \text{ m}$ / $10 \text{ m}$ \\
+		波导部署高度 $L_z$ & $3 \text{ m}$ \\
+		捏合波导 / 天线数量 $M$ & $10$ \\
+		载波频率 $f_c$ & $1 \text{ GHz}$ \\
+		用户发射功率 $P_t$ & $30 \text{ dBm}$ \\
+		噪声功率 $\sigma^2$ & $-30 \text{ dBm}$ \\
+		导频序列快拍数 $T$ & $20$ \\
+		二维MUSIC粗搜 / 精搜步长 & $0.1 \text{ m}$ / $0.001 \text{ m}$ \\
+		CG-APPL迭代次数 $I$ & $3$ \\
+		蒙特卡洛试验次数 $N_{\mathrm{mc}}$ & $320$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+本节引入以下三种定位基准方案与所提CG-APPL算法进行对比分析：
+\begin{itemize}
+	\item \textbf{WLS方案：}
+	该方案中，所有捏合天线固定在波导的起始端（即 $x_m = 0, \forall m$），不进行滑动调整。基站基于该固定构型接收到的信号，采用基于接收信号强度的加权最小二乘算法进行位置估计\cite{zhang2025pinchingantenna}。
+
+	\item \textbf{MUSIC方案：}
+	天线配置与WLS方案相同，但在位置估计环节，采用本章提出的二维MUSIC谱峰搜索算法。该方案用于评估在相同固定几何构型下，高分辨率子空间算法相对于传统WLS算法的性能提升。
+	
+	\item \textbf{WLS-AO方案：}
+	该方案保留了本章提出的动态天线配置策略，但在每次迭代更新天线位置后，采用WLS算法重新估计用户位置。该方案旨在验证最优圆形分布策略对不同定位估计算法的普适增强效果。
+\end{itemize}
+
+本节采用二维均方根误差（Root Mean Squared Error，RMSE）对定位精度进行评价，其定义为：
+\begin{equation}\label{eq:pass_rmse_def}
+	\mathrm{RMSE} = \sqrt{ \frac{1}{N_{\mathrm{mc}}} \sum_{n=1}^{N_{\mathrm{mc}}} \left[ (u_n - \hat{u}_n)^2 + (v_n - \hat{v}_n)^2 \right] },
+\end{equation}
+其中 $(u_n, v_n)$ 和 $(\hat{u}_n, \hat{v}_n)$ 分别表示第 $n$ 次蒙特卡洛试验中的真实用户坐标与估计用户坐标。
+
+
+\subsection{捏合天线通信理论性能验证}
+
+本小节主要验证捏合天线系统通信性能的理论推导，包括定理~\ref{the:pass_avg_snr}中的平均信噪比与命题~\ref{pro:pass_outage_prob}中的空间中断概率。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_figSNRvsM.pdf}
+	\caption{不同区域宽度$L_y$下，平均信噪比与波导数量$M$的关系}
+	\label{fig:pass_figSNRvsM}
+\end{figure}
+
+图~\ref{fig:pass_figSNRvsM} 给出了在不同服务区域宽度（$L_y = 3 \text{ m}, 10 \text{ m}, 20 \text{ m}$）下，系统平均接收信噪比随部署波导数量 $M$ 的变化曲线。
+从图中可以观察到，在所有区域宽度下，蒙特卡洛仿真结果与式~\eqref{eq:pass_avg_snr}给出的理论精确解完全吻合，对于式~\eqref{eq:pass_avg_snr_approx}所给出的渐近近似解，在波导数量较少时，由于相邻波导间距较大，会引入微小误差；然而随着$M$增大，该渐近解迅速收敛至精确解，说明所推导的近似表达式在较大波导数量条件下具有很好的适用性。此外，在固定 $M$ 的情况下，服务区域宽度 $L_y$ 的增大会导致平均信噪比下降，其原因是区域越宽，用户分布于远离阵列中心的边缘区域的概率越高，从而使得大尺度路径损耗的平均值上升。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_figOutagevsPt.pdf}
+	\caption{不同波导数量$M$下，空间中断概率随发射功率的变化曲线}
+	\label{fig:pass_figOutagevsPt}
+\end{figure}
+
+图~\ref{fig:pass_figOutagevsPt} 展示了在目标通信信噪比门限为$\gamma_{\text{th}}=30$~dB的条件下，系统空间中断概率 $P_{\mathrm{out}}$ 随用户发射功率 $P_t$ 的变化曲线，并对比了不同波导部署密度（$M = 16, 32, 48, 64$）下的性能。同时，图中引入了天线在起始端且规模为$M=64$的传统固定线阵作为对比基准。
+从图中可以看出，捏合天线系统相较于同等规模的传统固定线阵展现出了压倒性的优势，在相同的中断概率下所需的发射功率显著降低。这一优势主要源于捏合天线的可移动特性，有效缩短了信号传播距离，抑制大尺度的路径损耗，并维持稳定的LoS链路。相比之下，传统固定天线对边缘用户的覆盖较差，导致其中断概率曲线随发射功率增加下降缓慢。
+例如，为达到$10^{-3}$的中断概率，固定线阵需要超过 $35.5\ \text{dBm}$ 的发射功率，比捏合天线系统高出约 $7.5\ \text{dB}$。
+此外，随着波导数量的增加，中断性能逐渐改善，曲线整体左移。
+例如，为保证 $10^{-3}$ 的中断概率，当$M$ 从 $16$ 增至 $64$ 时，所需发射功率由约 $34\ \text{dBm}$ 下降至约 $28\ \text{dBm}$。
+最后，图中所有配置下的蒙特卡洛仿真结果均与理论曲线吻合良好，尤其在中断概率急剧下降的“瀑布区”表现一致，从而验证了命题~\ref{pro:pass_outage_prob}所推导的表达式。
+
+
+
+\subsection{联合定位与天线配置算法性能分析}
+
+本小节将全面评估CG-APPL算法的综合性能。通过分析天线构型与空间谱的动态演变过程、不同系统参数对定位RMSE的影响，并结合全区域RMSE热力图，探讨动态几何重构对定位精度的提升作用。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.85\linewidth]{pass/pass_figMUSICheatmap.pdf}
+	\caption{天线几何构型演变与 MUSIC 空间谱对比}
+	\label{fig:pass_figMUSICheatmap}
+\end{figure}
+
+图~\ref{fig:pass_figMUSICheatmap}展示了捏合天线系统在优化前后的阵列几何形态以及对应的二维MUSIC空间谱图。图中仿真采用 $M=20$ 条波导的密集配置，以清晰呈现阵列构型的变化，目标用户位于$(6.5, 6.5) \text{ m}$处。
+如图~\ref{fig:pass_figMUSICheatmap}(a)所示，在初始阶段，传统的固定线阵虽然能够通过MUSIC算法估计出用户的大致位置，但其空间谱峰较为平缓，且存在明显径向拖尾。这种观测不对称在图中表现为狭长的误差椭圆，从而制约了定位精度。
+而图~\ref{fig:pass_figMUSICheatmap}(b)经过重构阵列形态，形成了一个以目标为中心、半径约为$L_z$的离散对称圆形阵列。在此几何构型下，阵列可从正交方向均匀地获取目标的空间信息，空间谱的谱峰因此变得尖锐集中。这一结果表明，圆形几何构型有效克服了单侧观测的局限，有效提升了系统的空间分辨率与定位精度。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_figRMSEvsNT.pdf}
+	\caption{不同算法的定位均方根误差随导频快拍数 $T$ 的变化曲线}
+	\label{fig:pass_figRMSEvsNT}
+\end{figure}
+
+在明确了圆形几何构型对空间分辨率的提升效果后，系统实际部署中的导频资源分配问题也需要重点考量。导频序列过短会使得噪声无法被充分平均，增大定位误差；而导频序列过长又会占用过多的通信资源，并引入不必要的定位时延。
+图~\ref{fig:pass_figRMSEvsNT} 展示了在发射功率 $P_t = 30 \text{ dBm}$、噪声功率为 $-35 \text{ dBm}$ 的条件下，四种算法的RMSE随导频快拍数 $T$的变化关系。
+从图中可以看出：在 $T$ 较小的阶段，所有算法的RMSE均随快拍数增加而迅速下降；当 $T > 20$ 后，各算法的误差曲线逐渐趋于平缓。WLS与MUSIC算法的误差在达到一定下限后基本不再改善，CG-APPL算法虽在 $T$ 继续增加时仍有微小精度提升，但边际收益已不明显。
+综合以上分析，将导频快拍数设定为$T = 20$是一种兼顾精度与开销的工程折中方案。在此条件下，CG-APPL能实现毫米级精度的定位，本节的后续仿真均采用 $T = 20$这一快拍数。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_figRMSEvsTransmitPower.pdf}
+	\caption{不同算法的定位均方根误差随发射功率的变化曲线}
+	\label{fig:pass_figRMSEvsTransmitPower}
+\end{figure}
+
+图~\ref{fig:pass_figRMSEvsTransmitPower} 展示了在噪声功率固定为 $-45 \text{ dBm}$ 的条件下，四种定位算法的均方根误差随目标用户发射功率 $P_t$ 的变化关系。
+从图中可以看出，所有算法的 RMSE 均随 $P_t$ 的增加而下降，这是高信噪比条件下信号分量增强、噪声影响减弱的直接体现。
+然而，不同算法的性能差距十分显著：一方面，基于固定线阵的二维 MUSIC 算法凭借其高分辨谱峰提取能力，在整个功率范围内均优于基于能量检测的固定 WLS 算法；另一方面，引入阵列重构策略的 WLS-AO 与本章提出的 CG-APPL 算法，其精度均显著超越对应的固定线阵算法。
+在低发射功率的阶段，当有效信号刚刚从强噪声背景中浮现时，CG-APPL 算法的误差曲线呈现急剧下降；进入高发射功率段后，其通过粗‑精两阶段搜索克服了离散网格误差，RMSE 继续保持下降趋势，并与 WLS-AO 的下降趋势一致，最终达到亚毫米级的定位精度。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_figRMSEvsLx.pdf}
+	\caption{不同定位算法的均方根误差随波导长度 $L_x$ 的变化曲线}
+	\label{fig:pass_figRMSEvsLx}
+\end{figure}
+
+为了探究服务区域尺寸对系统定位鲁棒性的影响，图~\ref{fig:pass_figRMSEvsLx} 给出了在噪声功率为 $-30 \text{ dBm}$ 的条件下，四种算法的定位均方根误差随 $x$ 轴方向的房间深度 $L_x$ 的变化情况。仿真中 $L_x$ 由 $4 \text{ m}$ 逐步增至 $20 \text{ m}$，目标用户在各尺寸区域内服从随机均匀分布。
+整体来看，随着波导长度增加，用户可能的分布范围扩大，远端用户路径损耗增大，导致固定观测视角下几何精度衰减。这使得固定天线阵列方案的定位误差持续上升，而具备动态重构能力的算法则表现出几乎不受房间深度影响的稳定性能。
+进一步对比这两种动态方案，本章所提的 CG-APPL 算法凭借子空间高分辨率搜索，其 RMSE 在整个 $L_x$ 变化范围内始终稳定在 $10^{-3} \text{ m}$ 量级，优于基于信号强度的 WLS-AO 算法。
+
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{pass/pass_figRMSEheatmap.pdf}
+	\caption{噪声功率为 $-25 \text{ dBm}$ 条件下，四种算法的全区域定位 RMSE 空间热力图}
+	\label{fig:pass_figRMSEheatmap_cn}
+\end{figure}
+
+图~\ref{fig:pass_figRMSEheatmap_cn} 展示了在噪声功率为 $-25 \text{ dBm}$ 时，四种算法的定位性能在全服务区域内的空间分布细节。仿真中将 $10 \text{ m} \times 10 \text{ m}$ 的房间离散为 $40 \times 40$ 的网格，热力图中每个单元的颜色代表用户落入该区域时的平均 RMSE。
+从热力图的空间分布可见，基于初始固定阵列的 WLS 与 MUSIC 算法，其误差在空间上的分布较为不均匀。随着目标远离阵列，尤其在房间深处与角落，路径损耗增大，观测信噪比恶化，形成深红色的高误差区。
+值得注意的是，图~\ref{fig:pass_figRMSEheatmap_cn}(c)显示固定 MUSIC 算法虽然在远端误差较低，但在紧邻 $y$ 轴的区域却出现了一条红色误差带，其误差甚至高于远端。这印证了前文理论分析的观点：当用户极度靠近并与固定阵列近似共线时，观测视角失去几何多样性，导致沿法线方向的分辨能力丧失。
+相比之下，采用自适应阵列重构的方案则表现出优秀的全局均匀性。
+图~\ref{fig:pass_figRMSEheatmap_cn}(b) 显示 WLS-AO 算法有效缓解了房间角落的误差上升。
+从图~\ref{fig:pass_figRMSEheatmap_cn}(d) 可以看出，CG-APPL 算法消除了全区域内的高误差盲区，整幅热力图呈现均匀的深蓝色。
+这一结果表明，基于几何引导的动态天线重构不仅能有效提升定位准确度，更是实现室内全域无缝高精度感知的重要基础。
+
+
+
+
+
+\section{本章小结}
+
+
+\noindent\rule{\linewidth}{2pt}
+
+\textcolor{red}{之后再写}
+考虑到定位精度与系统开销的工程折中，用户发送的连续导频快拍数默认设置为 $T = 20$。

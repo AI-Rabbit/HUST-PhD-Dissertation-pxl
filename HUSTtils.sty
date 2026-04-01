@@ -1,0 +1,95 @@
+\ProvidesPackage{HUSTtils}[2006/03/27 2.2 any packages you would
+like to use]
+\usepackage{multirow,booktabs,soul}
+\usepackage{makecell}
+\usepackage{array}
+\usepackage{color}
+\usepackage{stfloats}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{nccmath}
+
+\usepackage{setspace}
+\usepackage{etoolbox}
+\AtBeginEnvironment{algorithmic}{\setstretch{1.2}} % 0.95 可按需调整
+
+% 使 algorithm 计数器按 chapter 重置，并且编号格式为 chapter.algorithm
+\usepackage{chngcntr} % 需要引入此包
+\counterwithin{algorithm}{chapter} % 这样每章 algorithm 计数器会重置
+
+\renewcommand{\thealgorithm}{\thechapter.\arabic{algorithm}}
+\floatname{algorithm}{算法}
+\renewcommand{\algorithmicensure}{\textbf{输出：}}
+\renewcommand{\algorithmicrequire}{\textbf{输入：}}
+
+\renewcommand{\algorithmicif}{\textbf{如果}}
+\renewcommand{\algorithmicthen}{\textbf{则}}
+\renewcommand{\algorithmicelse}{\textbf{否则}}
+\renewcommand{\algorithmicendif}{\textbf{结束条件}}
+
+\renewcommand{\algorithmicfor}{\textbf{对于}}
+\renewcommand{\algorithmicdo}{\textbf{执行}}
+\renewcommand{\algorithmicendfor}{\textbf{结束循环}}
+
+\renewcommand{\algorithmicwhile}{\textbf{当}}
+\renewcommand{\algorithmicendwhile}{\textbf{结束循环}}
+
+\renewcommand{\algorithmicreturn}{\textbf{返回}}
+
+
+% --- 放宽 LaTeX 浮动体排版限制的全局参数 ---
+\renewcommand{\textfraction}{0.1}      % 页面中必须保留的文字比例最小值（默认通常是 0.2，改小允许图片占更大空间）
+\renewcommand{\topfraction}{0.9}       % 页面顶部允许被图片占据的最大比例（默认 0.7）
+\renewcommand{\bottomfraction}{0.9}    % 页面底部允许被图片占据的最大比例（默认 0.3）
+\renewcommand{\floatpagefraction}{0.85}% 触发“纯图片页”的判定阈值（极其关键：默认 0.5，改大意味着只要图没占满 85%，就必须排版文字）
+\setcounter{topnumber}{3}              % 页面顶部最多允许放几张图（默认 2）
+\setcounter{bottomnumber}{3}           % 页面底部最多允许放几张图（默认 1）
+\setcounter{totalnumber}{5}            % 一页总共最多允许放几张图（默认 3）
+
+
+
+
+\usepackage{url}
+\definecolor{hl}{rgb}{0.75,0.75,0.75}
+\sethlcolor{hl}
+\usepackage{natbib}
+\newcommand{\lcite}[1]{{\setcitestyle{numbers,square}\cite{#1}}}
+
+
+% 不同于~|\mathcal| or |\mathfrak| 之类的英文花体字体
+%\RequirePackage{mathrsfs}
+
+
+% 确定浮动对象的位置，可以使用~H，强制将浮动对象放到这里（可能效果很差）
+%\RequirePackage{float}
+
+
+% 浮动图形控制宏包。
+% 允许上一个~section 的浮动图形出现在下一个~section 的开始部分
+% 该宏包提供处理浮动对象的~|\FloatBarrier| 命令，使所有未处
+% 理的浮动图形立即被处理。这三个宏包仅供参考，未必使用：
+ % \RequirePackage[below]{placeins}
+ % \RequirePackage{floatflt} % 图文混排用宏包
+ % \RequirePackage{rotating} % 图形和表格的控制旋转
+
+
+% 表格
+%\RequirePackage{multirow}
+\RequirePackage{longtable}
+% 表格中的字体比正文小半号，为大五号，11pt，同时表格中的行距为 1.4 倍行距
+\let\HUST@longtable\longtable
+\renewcommand\longtable{\dawu[1.4]\HUST@longtable}
+\let\endHUST@longtable\endlongtable
+
+%\RequirePackage[all]{xy}
+\RequirePackage{overpic}
+%\RequirePackage{psfrag}
+
+% 给自定义的宏后面自动加空白
+% \RequirePackage{xspace}
+
+
+% 定义自己常用的东西
+%\newcommand{\china}{中华人民共和国}
+
+\endinput
