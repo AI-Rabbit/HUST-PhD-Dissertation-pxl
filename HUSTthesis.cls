@@ -167,7 +167,7 @@
 
 % 加载此宏包以支持并排图形，打开 config 选项以兼容过时宏包
 % subfigure
-\RequirePackage[config]{subfig}
+\RequirePackage{subcaption}
 
 % 首行缩进宏包
 \RequirePackage{indentfirst}

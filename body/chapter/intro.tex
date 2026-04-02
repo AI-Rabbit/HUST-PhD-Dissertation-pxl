@@ -2,34 +2,42 @@
 
 \section{研究背景与意义}\label{sec:background}
 
-近年来，随着第五代移动通信技术（The Fifth Generation Mobile Communication Technology，5G）在全球范围内的规模化商用部署，移动通信技术在提升信息传输效率、拓展应用场景以及推动社会信息化进程等方面发挥了重要作用\cite{YouXiaoHu20145gyidongtongxinfazhanqushiyuruoganguanjianjishu}。依托大规模多输入多输出（Massive Multiple-Input and Multiple-Output，mMIMO）、毫米波（Millimeter Wave，mmWave）通信以及超密集组网（Ultra-Dense Network，UDN）等关键技术，5G网络在峰值速率、频谱效率和连接密度等性能指标上相较第四代移动通信技术（The Fourth Generation Mobile Communication Technology，4G）实现了数量级的提升，初步支撑了增强型移动宽带（Enhanced Mobile Broadband，eMBB）、大规模机器通信（Massive Machine-Type Communications，mMTC）以及超可靠低时延通信（Ultra-Reliable and Low-Latency Communications，URLLC）这三大应用场景的需求\cite{larsson2014massive,bennis2018ultrareliable}。
-然而，远程医疗、无人驾驶和沉浸式虚拟现实等技术的蓬勃发展，对无线链路的速率、时延和能效等要求越来越高，使得现有技术的局限性逐渐显现出来，人们开始了对第六代移动通信技术（The Sixth Generation Mobile Communication Technology，6G）的预研\cite{zhao20196g,ZhangPing20196gyidongtongxinjishuzhanwang,you20216g}。
+近年来，随着第五代移动通信技术（The Fifth Generation Mobile Communication Technology, 5G）在全球范围内的规模化商用部署，移动通信技术在提升信息传输效率、拓展应用场景以及推动社会信息化进程等方面发挥了重要作用\cite{YouXiaoHu20145gyidongtongxinfazhanqushiyuruoganguanjianjishu}。依托大规模多输入多输出（Massive Multiple-Input and Multiple-Output, mMIMO）、毫米波（Millimeter Wave, mmWave）通信以及超密集组网（Ultra-Dense Network, UDN）等关键技术，5G网络在峰值速率、频谱效率和连接密度等性能指标上相较第四代移动通信技术（The Fourth Generation Mobile Communication Technology, 4G）实现了数量级的提升，初步支撑了增强型移动宽带（Enhanced Mobile Broadband, eMBB）、大规模机器通信（Massive Machine-Type Communications, mMTC）以及超可靠低时延通信（Ultra-Reliable and Low-Latency Communications, URLLC）这三大应用场景的需求\cite{larsson2014massive,bennis2018ultrareliable}。
+然而，远程医疗、无人驾驶和沉浸式虚拟现实等技术的蓬勃发展，对无线链路的速率、时延和能效等要求越来越高，使得现有技术的局限性逐渐显现出来，人们开始了对第六代移动通信技术（The Sixth Generation Mobile Communication Technology, 6G）的预研\cite{zhao20196g,ZhangPing20196gyidongtongxinjishuzhanwang,you20216g}。
 
 \begin{figure}[!htbp]
 	\centering
-	\subfloat[6G典型应用场景]{
-		\includegraphics[width=0.52\linewidth]{intro/intro_6G_usage_scenarios.pdf}
+	% 第一张子图
+	\begin{subfigure}[b]{0.52\linewidth} % 设置子图宽度，[b]表示底部对齐
+		\centering
+		\includegraphics[width=\linewidth]{intro/intro_6G_usage_scenarios.pdf}
+		\caption{6G典型应用场景}
 		\label{fig:intro_6G_usage_scenarios}
-	}
-	\subfloat[6G与5G性能指标对比]{
-		\includegraphics[width=0.48\linewidth]{intro/intro_6G_performance.pdf}
+	\end{subfigure}% % 这里的 % 很有必要，防止产生多余空格导致换行
+	\hfill % 在两个子图之间自动填充间距
+	% 第二张子图
+	\begin{subfigure}[b]{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{intro/intro_6G_performance.pdf}
+		\caption{6G与5G性能指标对比}
 		\label{fig:intro_6G_performance}
-	}
+	\end{subfigure}
+	\vspace{-1.5cm}
 	\caption{IMT-2030中提出的6G愿景与性能指标\cite{ITU2023M2160}}
 	\label{fig:intro_6G_imt}
 \end{figure}
 
-2023年11月，国际电信联盟（International Telecommunication Union，ITU）发布了6G建议书\cite{ITU2023M2160}，书中明确提出6G网络的六大典型应用场景，如图~\ref{fig:intro_6G_imt}(a)所示。其中包含对5G的原有场景提出了更高的要求，分别是：沉浸式通信、大规模通信和极致可靠和低延时通信，另外引入了通信感知一体化（Integrated Sensing and Communication，ISAC）、通信与人工智能（Artificial Intelligence，AI）融合和泛在连接三大全新应用范式。为了实现这些愿景，ITU为6G网络提出了15个具体的性能指标维度要求，如图~\ref{fig:intro_6G_imt}(b)所示。具体而言，九大增强型能力指标在5G原有能力上拓展，数据速率、频谱效率和能量效率均要求数倍于5G性能；六大全新能力涵盖全域覆盖、感知能力、定位能力、AI能力、可持续性和互操作性，要求6G网络向智能化、一体化发展。
+2023年11月，国际电信联盟（International Telecommunication Union, ITU）发布了6G建议书\cite{ITU2023M2160}，书中明确提出6G网络的六大典型应用场景，如图~\ref{fig:intro_6G_imt}(a)所示。其中包含对5G的原有场景提出了更高的要求，分别是：沉浸式通信、大规模通信和极致可靠和低延时通信，另外引入了通信感知一体化（Integrated Sensing and Communication, ISAC）、通信与人工智能（Artificial Intelligence, AI）融合和泛在连接三大全新应用范式。为了实现这些愿景，ITU为6G网络提出了15个具体的性能指标维度要求，如图~\ref{fig:intro_6G_imt}(b)所示。具体而言，九大增强型能力指标在5G原有能力上拓展，数据速率、频谱效率和能量效率均要求数倍于5G性能；六大全新能力涵盖全域覆盖、感知能力、定位能力、AI能力、可持续性和互操作性，要求6G网络向智能化、一体化发展。
 
-然而，5G系统中广泛使用的技术已经不能很好地适应这些新需求。一方面，传统的mMIMO技术由有源相控阵实现，通过在基站侧和用户侧配置多根天线，可以带来信道容量的提升，且增益正比于天线数量\cite{bjornson2016massive}。为实现6G中更高的频谱效率要求，所需的天线数量将剧烈增长，这不仅受到系统物理尺寸和复杂度的制约，大量的射频链路还会引起不可忽视的成本和功耗问题。另一方面，现有的蜂窝网络普遍受限于既定的物理传播环境，依靠更高的建站密度提升非视距（Non-Line-of-Sight，NLoS）覆盖，实现“全域覆盖”将进一步推高网络的建设和运营成本。在6G对高性能与低功耗双重要求的背景下，需要打破传统的通信架构，由“适应信道”的旧范式转变为“主动改变信道”的新设计范式，力求实现高效节能通信。
+然而，5G系统中广泛使用的技术已经不能很好地适应这些新需求。一方面，传统的mMIMO技术由有源相控阵实现，通过在基站侧和用户侧配置多根天线，可以带来信道容量的提升，且增益正比于天线数量\cite{bjornson2016massive}。为实现6G中更高的频谱效率要求，所需的天线数量将剧烈增长，这不仅受到系统物理尺寸和复杂度的制约，大量的射频链路还会引起不可忽视的成本和功耗问题。另一方面，现有的蜂窝网络普遍受限于既定的物理传播环境，依靠更高的建站密度提升非视距（Non-Line-of-Sight, NLoS）覆盖，实现“全域覆盖”将进一步推高网络的建设和运营成本。在6G对高性能与低功耗双重要求的背景下，需要打破传统的通信架构，由“适应信道”的旧范式转变为“主动改变信道”的新设计范式，力求实现高效节能通信。
 
-因此，如何构建智能电磁环境成为6G技术演进的重要突破方向。可重构天线系统（Reconfigurable Antenna System，RAS）这一新型体系结构，能够主动调控电磁波的传播行为，实现“重构信道”，已经成为6G物理层系统架构中的重要研究方向之一。广义而言，RAS是指一类能够在相位响应、幅度响应或空间分布等维度实现动态调控的天线阵列或电磁表面，其核心目标是在尽量降低硬件复杂度的前提下，实现对电磁波传播路径和特性的主动控制，有效解决传统mMIMO技术在成本、能效与部署方面面临的挑战。根据系统部署位置及重构方式的不同，现有RAS相关研究可大致划分为三类具有代表性的技术路径：第一类为部署于发射端，用以取代或简化有源相控阵的动态超表面天线（Dynamic Metasurface Antenna，DMA）\cite{smith2017analysis}；第二类为同样部署于发射端，但通过调整天线空间位置可实现大尺度信道重构的捏合天线系统（Pinching Antenna Systems，PASS）\cite{ding2025flexibleantenna}；第三类为部署在基站（Base Station，BS）与用户设备（User Equipment，UE）之间，用于构建视距链路（Line-of-Sight，LoS），改善覆盖条件的可重构智能表面（Reconfigurable Intelligent Surface，RIS）\cite{liu2021reconfigurable}。下文将对上述三类可重构天线技术的基本原理与典型特征进行简要介绍。
+因此，如何构建智能电磁环境成为6G技术演进的重要突破方向。可重构天线系统（Reconfigurable Antenna System, RAS）这一新型体系结构，能够主动调控电磁波的传播行为，实现“重构信道”，已经成为6G物理层系统架构中的重要研究方向之一。广义而言，RAS是指一类能够在相位响应、幅度响应或空间分布等维度实现动态调控的天线阵列或电磁表面，其核心目标是在尽量降低硬件复杂度的前提下，实现对电磁波传播路径和特性的主动控制，有效解决传统mMIMO技术在成本、能效与部署方面面临的挑战。根据系统部署位置及重构方式的不同，现有RAS相关研究可大致划分为三类具有代表性的技术路径：第一类为部署于发射端，用以取代或简化有源相控阵的动态超表面天线（Dynamic Metasurface Antenna, DMA）\cite{smith2017analysis}；第二类为同样部署于发射端，但通过调整天线空间位置可实现大尺度信道重构的捏合天线系统（Pinching Antenna Systems, PASS）\cite{ding2025flexibleantenna}；第三类为部署在基站（Base Station, BS）与用户设备（User Equipment, UE）之间，用于构建视距链路（Line-of-Sight, LoS），改善覆盖条件的可重构智能表面（Reconfigurable Intelligent Surface, RIS）\cite{liu2021reconfigurable}。下文将对上述三类可重构天线技术的基本原理与典型特征进行简要介绍。
 
-其中，动态超表面天线侧重于基站侧的体系结构革新，不同于传统相控阵高度依赖射频链路或移相器网络进行相位调节，DMA通过在波导或谐振腔表面集成大量包含正-本征-负（Positive-Intrinsic-Negative，PIN）二极管、变容二极管等可调谐元件的超材料单元，实现对电磁波幅度和相位的直接调控。借助对单元谐振状态的独立控制，DMA能够显著减少天线阵列中射频链路的数量，从而降低硬件复杂度和系统功耗，为超大规模天线阵列的工程实现提供了可行路径。然而，这种以波导馈电和单元辐射为特征的结构形式，也使DMA的信号传输过程不可避免地受到波导传播效应及单元耦合特性的共同影响，其可实现的波束增益及性能边界有别于传统相控阵。因此，有必要从理论层面对DMA的波束赋形机制及其性能极限进行系统分析。
+其中，动态超表面天线侧重于基站侧的体系结构革新，不同于传统相控阵高度依赖射频链路或移相器网络进行相位调节，DMA通过在波导或谐振腔表面集成大量包含正-本征-负（Positive-Intrinsic-Negative, PIN）二极管、变容二极管等可调谐元件的超材料单元，实现对电磁波幅度和相位的直接调控。借助对单元谐振状态的独立控制，DMA能够显著减少天线阵列中射频链路的数量，从而降低硬件复杂度和系统功耗，为超大规模天线阵列的工程实现提供了可行路径。然而，这种以波导馈电和单元辐射为特征的结构形式，也使DMA的信号传输过程不可避免地受到波导传播效应及单元耦合特性的共同影响，其可实现的波束增益及性能边界有别于传统相控阵。因此，有必要从理论层面对DMA的波束赋形机制及其性能极限进行系统分析。
 
-在此基础上，捏合天线系统进一步从空间层面拓展了可重构自由度。捏合天线（Pinching Antenna，PA）又称夹子天线，介质波导上被夹子夹住的地方，介电常数会发生变化，电磁波便会辐射出来。利用这一性质，将DMA中波导上的超材料单元替换成这种可以沿着波导移动的“夹子”，使其具有位置可调的新自由度。该特性使捏合天线系统能够主动选择有利的空间位置，以规避深度衰落的区域并降低路径损耗，同时为高精度定位与感知提供更为丰富的空间信息。但实际部署中天线位置的移动往往伴随着馈电波导长度的改变，使信号在波导中传输和自由空间传播这两个过程存在紧密的耦合关系。上述因素使捏合天线的位置优化复杂化，需要针对性进行性能分析与算法设计。因此，有必要建立符合物理传播特性的PASS传输模型，定量刻画空间自由度引入所带来的性能增益，并进一步探索PA位置信息辅助下的通感一体化波束赋形机制。
+在此基础上，捏合天线系统进一步从空间层面拓展了可重构自由度。捏合天线（Pinching Antenna, PA）又称夹子天线，介质波导上被夹子夹住的地方，介电常数会发生变化，电磁波便会辐射出来。利用这一性质，将DMA中波导上的超材料单元替换成这种可以沿着波导移动的“夹子”，使其具有位置可调的新自由度。该特性使捏合天线系统能够主动选择有利的空间位置，以规避深度衰落的区域并降低路径损耗，同时为高精度定位与感知提供更为丰富的空间信息。但实际部署中天线位置的移动往往伴随着馈电波导长度的改变，使信号在波导中传输和自由空间传播这两个过程存在紧密的耦合关系。上述因素使捏合天线的位置优化复杂化，需要针对性进行性能分析与算法设计。因此，有必要建立符合物理传播特性的PASS传输模型，定量刻画空间自由度引入所带来的性能增益，并进一步探索PA位置信息辅助下的通感一体化波束赋形机制。
 
-与DMA和PASS侧重于发射机自身的重构不同，RIS将重构对象拓展至无线传播环境本身。RIS是一种由大量的亚波长人工结构单元组成的平面阵列，具备调控电磁波幅度、相位或极化的能力。与DMA类似，RIS单元通常由电阻、电容、电感和二极管等无源元件构成，调节加载在单元上的电压值，能产生不同的响应。于是，通过对各单元反射相位的协同调控，RIS能够重塑电磁波的传播路径，实现信号在空间中的定向反射与聚焦。由于RIS能够以极低的功耗人为构建绕过障碍物的视距链路，它很适合作为部署于基站与用户之间的辅助通信节点，在提升覆盖的同时降低系统能耗。然而，RIS作为独立于收发机之外的即插即用型系统，通常难以与基站或终端协同完成信道估计过程；同时，其自身缺乏独立的射频链路，难以直接感知获取信道状态信息（Channel State Information，CSI），使得依赖完备CSI的传统波束赋形与优化方法难以适用。因此，如何设计无需信道状态信息的低复杂度波束赋形算法，并在算法与工程实现之间建立可行的衔接路径，构建可实际部署的原型系统，是RIS技术走向商用的关键前提。
+与DMA和PASS侧重于发射机自身的重构不同，RIS将重构对象拓展至无线传播环境本身。RIS是一种由大量的亚波长人工结构单元组成的平面阵列，具备调控电磁波幅度、相位或极化的能力。与DMA类似，RIS单元通常由电阻、电容、电感和二极管等无源元件构成，调节加载在单元上的电压值，能产生不同的响应。于是，通过对各单元反射相位的协同调控，RIS能够重塑电磁波的传播路径，实现信号在空间中的定向反射与聚焦。由于RIS能够以极低的功耗人为构建绕过障碍物的视距链路，它很适合作为部署于基站与用户之间的辅助通信节点，在提升覆盖的同时降低系统能耗。然而，RIS作为独立于收发机之外的即插即用型系统，通常难以与基站或终端协同完成信道估计过程；同时，其自身缺乏独立的射频链路，难以直接感知获取信道状态信息（Channel State Information, CSI），使得依赖完备CSI的传统波束赋形与优化方法难以适用。因此，如何设计无需信道状态信息的低复杂度波束赋形算法，并在算法与工程实现之间建立可行的衔接路径，构建可实际部署的原型系统，是RIS技术走向商用的关键前提。
 
 尽管DMA、PASS与RIS在具体实现形式和调控维度上各有侧重，但三者的核心目标一致，即通过引入新的信道调控自由度，实现对电磁传播环境的精细控制。无论是简化射频结构、重构天线空间位置，还是调控传播环境，其最终效果均体现为波束赋形能力的重塑及系统性能的提升。因此，围绕波束赋形机理、实际场景中的性能分析以及低复杂度算法实现开展研究，构成了可重构天线系统在6G物理层设计中的共同理论基础。下一节将分别综述三类可重构天线技术的代表性研究成果并总结目前面临的挑战。
 
