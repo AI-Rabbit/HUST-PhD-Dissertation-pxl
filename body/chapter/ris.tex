@@ -362,25 +362,23 @@ FPGA 根据内置的自适应波束赋形算法进行状态评估，解算出下
 
 \begin{figure}[!htbp]
 	\centering
-	\begin{subfigure}[b]{0.5\linewidth}
+	\begin{subfigure}[b]{0.48\linewidth}
 		\centering
 		 \includegraphics[height=5.8cm]{ris/ris_figChannelReciprocity_Amplitude.pdf}
 		\caption{幅频响应}
-		\label{fig:ris_channel_gain}
 	\end{subfigure}%
 	\hfill % 在两个子图之间水平填充空间
-	\begin{subfigure}[b]{0.5\linewidth}
+	\begin{subfigure}[b]{0.48\linewidth}
 		\centering
 		\includegraphics[height=5.8cm]{ris/ris_figChannelReciprocity_Phase.pdf}
 		\caption{相频响应}
-		\label{fig:ris_channel_phase}
 	\end{subfigure}
-	\vspace{-1.5cm}
+	\vspace{-0.5cm}
 	\caption{RIS反射信道的S12与S21参数实测曲线}
 	\label{fig:ris_channel_reciprocity}
 \end{figure}
 
-本小节使用矢量网络分析仪（VNA）对系统的S参数进行了实测。在测试中，为尽量消除周围环境散射多径的干扰并突出RIS的纯反射信道，两副收发喇叭天线被放置在距离RIS面板0.5 m处。VNA分别向两副天线馈入测试信号，记录5.7 GHz至5.9 GHz频段内的正向传输系数S21与反向传输系数S12。
+本小节使用矢量网络分析仪（Vector Network Analyzer, VNA）对系统的S参数进行了实测。在测试中，为尽量消除周围环境散射多径的干扰并突出RIS的纯反射信道，两副收发喇叭天线被放置在距离RIS面板0.5 m处。VNA分别向两副天线馈入测试信号，记录5.7 GHz至5.9 GHz频段内的正向传输系数S21与反向传输系数S12。
 在不同天线摆放位置下进行的重复测量均显示出良好的一致性。图~\ref{fig:ris_channel_reciprocity}展示了该测试环境下的一组典型S参数测量结果。从图中可以看出，在幅频特性曲线和相频特性曲线中，S12和S21参数表现出高度的一致性。
 这一结果证明了由无源超材料构成的RIS信道在宏观上服从电磁波的互易性定理。在时分双工模式下，上位机利用下行链路测得的RSRP迭代优化出的最优RIS配置向量$\bm{\phi}$，可直接应用于用户的上行信号传输。
 
@@ -402,7 +400,170 @@ FPGA 根据内置的自适应波束赋形算法进行状态评估，解算出下
 
 基于前文构建的波束赋形码本，控制器依次生成了期望反射角为 $30^\circ$、$40^\circ$、$50^\circ$ 和 $60^\circ$ 的波束赋形码字，并将其映射为 1 比特离散状态配置至 RIS。图~\ref{fig:ris_pattern} 展示了 RIS 在不同角度配置下的实测归一化辐射方向图。从图中可以看出，主瓣峰值所指向的角度与预设的期望反射角高度吻合。并且，在进行大范围的角度扫描时，主瓣的峰值增益展现出了较好的平坦度，不同指向角度下的增益波动不足 $1\,\mathrm{dB}$，且副瓣电平平均低于主瓣 $9.8\,\mathrm{dB}$。这一结果直观地验证了RIS原型系统对波束调控的准确性。
 
-\section{现网融合与应用测试}
+
+\section{RIS原型系统实测与现网应用评估}
+
+前文已在微波暗室的理想条件下验证了所研制RIS原型系统的波束调控能力。然而，真实无线环境存在复杂遮挡与多径散射，对原型系统和算法的鲁棒性要求更高。本节将原型系统部署于实际物理环境中，依次开展室内非视距与盲区覆盖、不同波束赋形算法性能对比以及商用5G现网等多场景测试。实测中根据不同频段需求，分别采用工作于 5.8 GHz和 2.6 GHz的 RIS 面板。
+
+\subsection{室内非视距与盲区覆盖测试}
+
+首先，针对室内典型的高衰减与复杂多径环境，本小节分别在穿墙非视距场景和走廊、办公区边缘信号盲区场景下测试了 RIS 的覆盖补盲能力。在室内穿墙通信测试中，具体场景布局如图~\ref{fig:ris_through_wall}(a)所示，发射机部署于走廊，接收机放置于相邻的封闭房间内。收发天线之间被一堵厚度为 30 cm 的承重混凝土墙完全阻隔，墙体中间还包含一根 53 cm 厚的柱子。房间铁门处于关闭状态，不存在直接视距路径。测试过程中，发射机的发射功率设定为 $-16$ dBm。5.8 GHz RIS 被部署于房间内部，通过前文提出的GFB算法动态调整其反射系数。需要注意的是，受噪声、干扰和时变信道的影响，接收功率测量值存在一定的波动，可以通过对其进行时间平均处理，以使算法运行更加稳定。实验还引入了一块与 RIS 物理尺寸相同、且放置于同一位置的纯铜板作为对照组。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.7\linewidth]{ris/ris_through_wall.pdf}
+	\caption{室内穿墙非视距通信测试场景及接收基带功率对比结果}
+	\label{fig:ris_through_wall}
+\end{figure}
+
+图~\ref{fig:ris_through_wall}(b)和(c)展示的实测数据表明，在采用铜板反射的对照组中，接收端记录的基带信号功率仅为约 $-49.38$ dBFS，通信链路处于微弱的边缘状态；而在接入 RIS 并完成波束赋形后，基带接收功率提升至 $-23.75$ dBFS。这说明与同等尺寸的金属反射面相比，GFB算法调控的 RIS 为接收端带来了 26 dB 的功率增益。虽然普遍认为 RIS 技术在 LoS 场景下最为有效 \cite{bjornson2022reconfigurable}，但本实验证明，至少在短距离范围内，RIS 在NLoS场景下同样具有显著的增益。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.4\linewidth]{ris/ris_corridor_map.pdf}
+	\caption{L 型走廊盲区覆盖测试环境平面图}
+	\label{fig:ris_corridor_map}
+\end{figure}
+
+
+现代建筑内部的 L 型走廊也是常见的电磁波传播盲区。走廊测试场景的平面图如图~\ref{fig:ris_corridor_map}所示。走廊宽度为 2.11 m，RIS 被部署于走廊拐角处，发射机和接收机分别位于两条相互垂直的走廊中。发射机到 RIS 的距离固定为 25 m，而接收机与 RIS 的距离则在 0 m 到 20 m之间，以1 m为步长变化。RIS与墙壁之间的夹角为$\theta$，该夹角同时也是入射角。发射功率为0 dBm。
+首先，将接收机固定在走廊尽头，测试了不同入射角$\theta$下的接收功率。平均结果显示，与关闭 RIS 相比，开启 RIS 并完成波束赋形后，当 $\theta$ 为 $15^\circ$ 或 $75^\circ$ 时可获得 14 dB 的功率增益；当 $\theta$ 为 $30^\circ$ 或 $60^\circ$ 时增益高达 20 dB；在 $45^\circ$ 时增益约为 6 dB。
+
+\begin{figure}[!htbp]
+	\centering
+	\begin{subfigure}[b]{0.48\linewidth}
+		\centering
+		\includegraphics[height=5.8cm]{ris/ris_corridor_data.pdf}
+		\caption{接收功率随距离变化曲线}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.48\linewidth}
+		\centering
+		\includegraphics[height=5.8cm]{ris/ris_iteration.pdf}
+		\caption{接收功率随测量次数变化曲线}
+	\end{subfigure}
+	\vspace{-0.5cm}
+	\caption{走廊盲区覆盖性能及算法收敛性测试结果}
+	\label{fig:ris_corridor_results}
+\end{figure}
+
+随后，固定入射角 $\theta = 30^\circ$，测试接收机在盲区走廊内不同距离下的接收功率，测试结果如图~\ref{fig:ris_corridor_results}(a)所示。可以看出，在没有RIS的情况下，接收功率相比视距路径下降了30 dB。随着距离的增加，处于关闭状态的 RIS仅能提供微弱且不稳定的反射，接收功率在 $-50$ dBm 以下波动。然而，当开启 RIS并运行波束赋形算法后，接收功率保持在$-32$ dBm左右。这表明，在走廊中没有直射路径的情况下，RIS可以显著增强接收功率。
+此外，实验还记录了在运行GFB算法期间接收功率随时间的变化情况，如图~\ref{fig:ris_corridor_results}(b)所示。实测曲线显示，无论是在 $\theta = 15^\circ$ 还是 $\theta = 45^\circ$ 下，算法在第一轮迭代结束时，接收功率均快速爬升并趋于稳定，在第二次迭代中达到且维持了最高值。这表明GFB算法收敛较快，能够在短时间内完成盲区的波束覆盖。另外，在算法寻优过程中，接收功率未出现骤然下降的情况，具备边通信边寻优的能力。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.5\linewidth]{ris/ris_office_map.pdf}
+	\caption{室内办公区环境网格划分与 RIS 部署位置平面图}
+	\label{fig:ris_office_map}
+\end{figure}
+
+为了进一步验证 RIS 在复杂室内多径环境下的补盲能力，本小节最后在一个标准的办公室内开展了边缘与角落盲区覆盖测试。如图~\ref{fig:ris_office_map}所示，该办公室被划分为 $4 \times 7$ 的网格区域，网格边长为 1.2 m。测试中，发射机固定于区域中心，发射功率设为 10 dBm，喇叭天线从发射机指向RIS的中心；接收机在 28 个网格测试点间移动，每个点停留 30 秒以记录平均接收功率。
+RIS被放置在图中三个位置，定向反射波束到点4，并在整个实验过程中保持此配置不变。
+实验中同样设置了同尺寸纯铜板与无反射体的基底环境作为对照组。
+
+\begin{figure}[!htbp]
+	\centering
+	\begin{subfigure}[b]{0.96\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{ris/ris_position1.pdf}
+		\caption{RIS部署于位置1}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.96\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{ris/ris_position2.pdf}
+		\caption{RIS部署于位置2}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.96\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{ris/ris_position3.pdf}
+		\caption{RIS部署于位置3}
+	\end{subfigure}
+	\vspace{-0.5cm}
+	\caption{不同部署位置下室内办公区各网格点接收功率空间分布图（单位：dBm）}
+	\label{fig:ris_office_result}
+\end{figure}
+
+图~\ref{fig:ris_office_result}展示的测量结果表明，RIS 在复杂的室内多径环境中具有显著且普遍的信号增强效果。当 RIS 部署于墙面中部时，相比于无反射体的基底环境，运行GFB算法的 RIS 能够带来 15.5 dB 至 20.5 dB 的平均接收功率增益。其中，部署于长边中点时增益最高，相较于纯铜板提升了 18.5 dB，有效消除了整个办公区域的信号盲区；而部署于短边中点时，由于接收机与 RIS 的距离是最远的，导致接收机收到更多来自墙壁的反射信号，从RIS接收到的能量相应减少，同时，此位置的反射角是三种情况中最小的，更容易产生镜面反射，RIS的增益下降至 15.5 dB。
+当 RIS 部署于办公室角落时，图~\ref{fig:ris_office_result}(b)显示，RIS 能够为目标覆盖点带来高达 22 dB 的接收功率提升，且空间连线上各点的接收功率都得到了显著增强。然而，由于在所有测试点均维持同一套码字，个别边缘测试点（如点25和点26）的接收功率仍然处于较低水平。这时，自适应调控的RIS可以快速运行算法并下发新的相位配置，将波束定向到点25处，使其接收信号功率提升至$-40.3$ dBm，较之前提高了约13 dB。
+上述实验不仅证明了 RIS 在室内多径环境下能够提供稳定的覆盖增益，更反映了自适应波束赋形算法在应对动态盲区时的必要性。
+
+
+\subsection{不同波束赋形算法实测性能对比}
+
+\begin{figure}[!htbp] 
+	\centering
+	\includegraphics[width=0.8\linewidth]{ris/ris_algorithms_compare.pdf}
+	\caption{实验室环境下的算法性能对比测试}
+	\label{fig:ris_algorithm_test}
+\end{figure}
+
+前文的实测充分验证了 RIS 在不同场景下的盲区覆盖能力。本小节在受控的实验室环境中开展算法性能的对比测试，评估本章提出的波束赋形算法在实际物理环境中的性能。
+本节测试采用了工作于 2.6 GHz 频段的 256 单元 RIS 面板。测试场景的平面布局与实物图如图~\ref{fig:ris_algorithm_test}所示。RIS 部署于房间中央，发射天线正对 RIS 面板，两者相距 2 m；接收天线沿着以RIS中心为圆心、半径为2 m的半圆移动，其与RIS法线之间的角度设置在 $30^\circ$ 至 $60^\circ$ 之间。
+系统分别运行了DFT码本算法、GFB算法、ASG算法以及作为基准参考的RS算法，实验记录了在不同反射角度下，系统运行各算法完成波束赋形后相较于 RIS 关闭状态的接收功率增益。
+
+\begin{table}[!htbp]
+	\centering
+	\caption{不同波束赋形算法的实测功率增益对比}
+	\label{tab:ris_algorithm_comparison}
+	\begin{tabular}{cccccc}
+		\toprule
+		\multirow{2}{*}{\textbf{算法类型}} & \multicolumn{5}{c}{\textbf{接收功率增益 (dB)}} \\ \cmidrule(lr){2-6}
+		& $\theta=30^\circ$ & $\theta=40^\circ$ & $\theta=50^\circ$ & $\theta=60^\circ$ & \textbf{平均增益} \\
+		\midrule
+		DFT算法 & 9.5  & 10.1 & 11.4 & 11.1 & 10.5 \\
+		GFB算法 & 10.0 & 10.3 & 10.3 & 10.2 & 10.2 \\
+		ASG算法 & 11.1 & 12.3 & 12.8 & 11.5 & 11.9 \\
+		RS算法  & 4.2  & 5.2  & 5.1  & 4.6  & 4.8  \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+各算法的实测性能对比数据详见表~\ref{tab:ris_algorithm_comparison}。从表中可以看出，ASG算法展现出了最优异的性能，在所有测试角度下均取得了最高增益，平均增益为 11.9 dB，相较于 DFT 算法与 GFB 算法获得了超过 1 dB 的提升。RS算法的平均增益仅为 4.8 dB，在所有方案中表现最差。这一实测结果与第~\ref{sec:ris_simulation}节的数值仿真一致。
+
+
+
+\noindent\rule{\linewidth}{2pt}
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+基于上述最优化算法的底层支撑，本章研制的 RIS 原型系统具备了应对更为严苛且复杂的真实商用部署环境的条件。在下一小节中，我们将该系统推向真实的商用 5G 网络，进一步评估其在现网覆盖增强中的实际价值与面临的工程挑战。
+
+
+\textit{Gemini编写}
+
+
+
+基于上述最优化算法的底层支撑，本章研制的 RIS 原型系统具备了应对更为严苛且复杂的真实商用部署环境的条件。在下一小节中，我们将该系统推向真实的商用 5G 网络，进一步评估其在现网覆盖增强中的实际价值与面临的工程挑战。
+
+
+\textit{DS翻译}
+
+
+
+
+
+
+Gemini编写\noindent\rule{\linewidth}{2pt}
+
+
+
+
+
+
+DS翻译\noindent\rule{\linewidth}{2pt}
+
+**在商用5G网络中的覆盖增强测试**
+
+为了评估我们的RIS系统在商用网络下的性能，我们在一处大型工业园区进行了一项实验。图\ref{fig:ris_outdoor_map}展示了测试环境的照片。基站位于通道入口100米外。手机与RIS相距1.5米，并在法线方向上呈45度角。实验期间，我们使用一款信号测试软件来监测来自基站的信号接收情况并记录其强度。
+
+我们首先在不部署RIS的情况下分析了软件上的小区列表，发现当用户设备在室内时，基站小区不在列表中。接着，我们将RIS放置在通道入口处，天线侧朝向基站。此时，用户设备能够解码目标小区的物理小区标识。然而，其参考信号接收功率低于-90 dBm。我们观察到RSRP随时间波动约2 dB，可能是由于树木、风等环境因素的干扰。这种波动对GFB算法的性能产生了不利影响。
+
+第xxx节提出的TFS码本能够缓解这个问题。它使我们能够根据反射角和相应的导向矢量来确定码字。我们可以测量这些角度并反馈给控制器。或者，我们可以使用TSC算法，按预定义的角度序列依次生成码本，并找到具有最高RSRP的码字。经过多次测试和平均后，我们发现，与RIS关闭时相比，RIS开启时室内信号强度提高了4至7 dB。实验结果比之前的室内实验大约差5 dB。
+
+为了找出这种差异的原因，我们进行了一项对比实验。我们使用一个射频信号源和一台频谱分析仪分别作为发射机和接收机。发射机位于距离RIS 10米处，沿着基站与RIS中心的连线放置，而接收机则位于移动用户原来的位置。我们分别使用全向天线和定向天线进行了实验。定向天线产生了与先前测试相似的增益，约为12 dB。然而，全向天线仅提供了4 dB的增益。这个结果与实际基站到用户设备的场景一致，并且对在实际全向天线环境中提升增益提出了挑战。初步测试结果表明，RIS能够根据用户位置调整信号波束，并在商用网络覆盖不佳的区域改善信号强度和通信质量。
+
 
 
 \noindent\rule{\linewidth}{2pt}
@@ -410,24 +571,13 @@ FPGA 根据内置的自适应波束赋形算法进行状态评估，解算出下
 
 
 
-
-\noindent\rule{\linewidth}{2pt}
-
+\begin{figure}[!htbp] 
+	\centering
+	\includegraphics[width=0.8\linewidth]{ris/ris_outdoor_map.pdf}
+	\caption{xxx}
+	\label{fig:ris_outdoor_map}
+\end{figure}
 
 
 \section{本章小结}
 
-
-
-
-
-\subsection{典型室内环境下的覆盖增强测试}
-
-\subsection{室外及远距离环境下的传输测试}
-
-
-
-
-
-
-上面的测试标题让GPT重新编排一下，涵盖所有的测试并合理分类。
