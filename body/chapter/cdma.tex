@@ -367,25 +367,37 @@
 	整理合并同类项，即可得到式~\eqref{eq:cdma_gamma_proj}，证毕。
 \end{proof}
 
+以直接映射松弛的平均信噪比$\gamma^{\mathrm{direct}}$为基准，定义归一化性能比值$R(N_e) = \gamma / \gamma^{\mathrm{direct}}$。当波导上的辐射单元数量趋于无穷时，由波导衰减引起的求和项之比的极限满足：
+\begin{equation}\label{eq:cdma_a1a2_infty}
+	\lim_{N_e \to \infty} \frac{a_2}{a_1^2} = \frac{(1 - e^{-\alpha D})^2}{1 - e^{-2\alpha D}} = \frac{1 - e^{-\alpha D}}{1 + e^{-\alpha D}} = \tanh\left(\frac{\alpha D}{2}\right).
+\end{equation}
+由定理~\ref{the:cdma_gamma}、推论~\ref{cor:cdma_gamma_relax}、推论~\ref{cor:cdma_gamma_proj}与式~\eqref{eq:cdma_a1a2_infty}，可推导出最优相位配置与欧氏投影松弛的渐近归一化性能：
+\begin{align}
+	R_{\infty}^{\mathrm{opt}} &= 1 + \frac{2\pi \sqrt{\tanh\left(\frac{\alpha D}{2}\right)}}{\pi + (8-\pi) \tanh\left(\frac{\alpha D}{2}\right)}, \label{eq:cdma_R_opt_inf}\\
+	R_{\infty}^{\mathrm{proj}} &= \frac{\pi \xi_2^2 + (8 \xi_1 - \pi \xi_2^2) \tanh\left(\frac{\alpha D}{2}\right)}{\pi + (8-\pi) \tanh\left(\frac{\alpha D}{2}\right)}. \label{eq:cdma_R_proj_inf}
+\end{align}
+
+式~\eqref{eq:cdma_R_opt_inf}表明，最优相位配置相对于直接映射的增益并不会随$N_e$的增加而消失，而是收敛于大于$1$的常数。在 $\alpha D \ll 1$的条件下，$\tanh(\alpha D/2) \to 0$，非相干项 $a_2$可以忽略不计，系统的渐近归一化性能主要由相干增益项主导。
+基于此近似，表~\ref{tab:cdma_comparison}提取了三种方法平均信噪比表达式中的主导项系数，并以直接映射松弛为基准进行了归一化比较。
+
 \begin{table}[!htbp]
 	\centering
 	\caption{三种相位配置方法的相干增益性能对比}
-	\label{tab:comparison}
+	\label{tab:cdma_comparison}
 	\begin{tabular}{cccc}
 		\toprule
-		\textbf{方法} & \textbf{映射策略} & \textbf{相干增益系数} & \textbf{归一化性能} \\
+		\textbf{方法} & \textbf{映射策略} & \textbf{主导相干增益} & \textbf{渐近归一化性能} \\
 		\midrule
-		最优相位配置 & 式~\eqref{eq:cdma_phi_star} & $\pi a_1^2 + 2\pi a_1\sqrt{a_2}$ & $> 1.0$ \\
-		直接映射松弛 & $\phi = -\arg(gh)$ & $\pi a_1^2$ & $1.0$ \\
-		欧氏投影松弛 & 式~\eqref{eq:cdma_phi_proj} & $\pi \xi_2^2 a_1^2, \; (\xi_2 \approx 0.934)$ & $\approx 0.873$ \\
+		最优相位配置 & 式~\eqref{eq:cdma_phi_star} & $\pi a_1^2 + 2\pi a_1\sqrt{a_2}$ & $1+\sqrt{2\alpha D}$ \\
+		直接映射松弛 & $\phi = -\arg(gh)$ & $\pi a_1^2$ & $1$ \\
+		欧氏投影松弛 & 式~\eqref{eq:cdma_phi_proj} & $\pi \xi_2^2 a_1^2$ & $0.873$ \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
-通过对比定理~\ref{the:cdma_gamma}、推论~\ref{cor:cdma_gamma_relax}和推论~\ref{cor:cdma_gamma_proj}，可以分析最优相位配置、直接映射松弛及欧氏投影松弛三种方法的性能。表~\ref{tab:comparison}提取了三种方法平均信噪比表达式中的主导项系数，并以直接映射松弛为基准进行了归一化比较。
-三种方法的平均性能满足最优相位配置$\gamma>$直接映射松弛$\gamma^{\mathrm{direct}}>$欧氏投影松弛$\gamma^{\mathrm{proj}}$。
-最优相位配置方法通过充分利用洛伦兹约束的固有偏置，保留了直接映射松弛所忽略的交叉项增益，在性能上严格优于后者。特别是在$N_e$较小时，这种相干增益在总能量中占比较大，最优配置方法的优势将更为显著。
-而欧氏投影松弛虽在几何上最小化了单元层面的映射误差，却因引入额外的相位失配导致了约$12.8\%$的功率衰减，其有效相干增益反而低于直接映射松弛。
+通过对比可以看出，三种方法的平均性能满足最优相位配置$\gamma>$直接映射松弛$\gamma^{\mathrm{direct}}>$欧氏投影松弛$\gamma^{\mathrm{proj}}$。最优相位配置方法通过充分利用洛伦兹约束的固有偏置，保留了直接映射松弛所忽略的交叉项增益，在性能上严格优于后者。特别是在$N_e$较小时，这种相干增益在总能量中占比较大，最优配置方法的优势将更为显著。
+而欧氏投影松弛虽在几何上最小化了单元层面的映射误差，却因引入额外的相位失配导致了约$12.7\%$的功率衰减，其有效相干增益反而低于直接映射松弛。
+
 
 \subsection{非完美CSI下的平均信噪比分析}
 
@@ -571,7 +583,7 @@
 
 \section{基于RSSI的相位估计与相位对齐算法}
 
-前文分析了在完美CSI条件下的最优相位配置及其性能上限。然而，在实际部署中，DMA阵列通常包含数以百计的辐射单元，受限于硬件成本和功耗，射频链路的数量$N_d$远小于辐射单元总数$N$。在这种架构下，基带处理单元通常只能获取每条波导叠加后的等效信道信息，而难以通过传统的导频训练方案单独估计每个辐射单元的信道系数$g_{i,l}h_{i,l}$。若采用开关轮询的方式逐个估计，导频开销将随$N_e$线性增长，导致系统传输效率下降。鉴于此，本节提出一种基于接收信号强度指示的相位对齐算法。由于用户端能够容易地测量下行链路的接收功率并反馈给基站，该方法无需单独估计信道，而是利用RSSI反馈直接优化DMA相位配置，从而最大化接收信噪比。
+前文分析了在完美CSI条件下的最优相位配置及其性能上限。然而，在实际部署中，DMA阵列通常包含数以百计的辐射单元，受限于硬件成本和功耗，射频链路的数量$N_d$远小于辐射单元总数$N$。在这种架构下，基带处理单元通常只能获取每条波导叠加后的等效信道信息，而难以通过传统的导频训练方案单独估计每个辐射单元的信道系数$g_{i,l}h_{i,l}$。若采用开关轮询的方式逐个估计，导频开销将随$N_e$线性增长，导致系统传输效率下降。鉴于此，本节提出一种基于RSSI的相位对齐算法。由于用户端能够容易地测量下行链路的接收功率并反馈给基站，该方法无需单独估计信道，而是利用RSSI反馈直接优化DMA相位配置，从而最大化接收信噪比。
 
 通过第~\ref{sec:cdma_opt}节的分析可知，在采用MRT预编码策略时，系统会根据各条波导的有效信道进行最大比合并，总接收功率表现为各个波导接收信号幅度的相干叠加，因此，可以分别对$N_d$个波导进行独立优化。
 不失一般性，考虑第$i$条波导，目标是通过调整该波导上$N_e$个单元的相位配置$\bm q_i$，以最大化该波导贡献的接收功率。
@@ -734,7 +746,26 @@
 	= \frac{5\sigma_\epsilon^2}{M}.
 \end{equation}
 
-上述分析给出了中间参数$\bm{x}$的最优估计，但实际波束赋形应用中更关注的是相位参数 $\psi$ 的估计精度。
+至此，确定了均匀采样为最优相位采样策略。在此基础上，可以进一步推导等效观测误差方差$\sigma_\epsilon^2$。记第$m$次无噪接收信号为$C_m = T_1 + T_2 e^{j\varphi_m}$，则实际含噪测量值为$p_m = |C_m + \eta_m|^2$。将其展开并与式~\eqref{eq:cdma_expected_power}对比，可得测量误差项$\epsilon_m$的表达式为：
+\begin{equation}
+	\epsilon_m = p_m - \mathbb{E}[p_m] = 2\Re(C_m^* \eta_m) + |\eta_m|^2 - \sigma^2.
+\end{equation}
+由于$\eta_m \sim \mathcal{CN}(0, \sigma^2)$，交叉项与噪声功率项不相关，故单次测量的方差为：
+\begin{equation}\label{eq:cdma_Var_epsilon_m}
+	\operatorname{Var}(\epsilon_m) = \mathbb{E}\left[ (2\Re(C_m^* \eta_m))^2 \right] + \operatorname{Var}(|\eta_m|^2) = 2\sigma^2|C_m|^2 + \sigma^4.
+\end{equation}
+
+从式~\eqref{eq:cdma_Var_epsilon_m}可以看出，由于平方检波的非线性，原本的同分布白噪声转变为与瞬时信号幅度 $|C_m|^2$ 相关的异方差噪声。然而，在均匀相位采样策略下，所有采样点信号功率的平均值满足:
+\begin{equation}
+	\frac{1}{M}\sum_{m=1}^{M}|C_m|^2 = |T_1|^2 + |T_2|^2.
+\end{equation}
+因此，可以使用平均方差作为线性回归的等效观测噪声方差$\sigma_\epsilon^2$，即：
+\begin{equation}\label{eq:cdma_sigma_eps}
+	\sigma_\epsilon^2 \approx \frac{1}{M}\sum_{m=1}^{M}\operatorname{Var}(\epsilon_m) = \sigma^4 + 2\sigma^2(|T_1|^2 + |T_2|^2).
+\end{equation}
+
+
+上述分析给出了中间参数$\bm{x}$的最优估计及其理论误差，但实际波束赋形应用中更关注的是相位参数 $\psi$ 的估计精度。
 相位估计量 $\hat{\psi}$ 与线性参数估计量 $\hat{x}_1, \hat{x}_2$ 之间存在非线性映射关系 $\hat{\psi} = \operatorname{atan2}(\hat{x}_2, \hat{x}_1)$。为了分析 $\hat{\psi}$ 的均方误差，在真值 $(x_1, x_2)$ 处对 $\hat{\psi}$ 进行一阶泰勒展开：
 \begin{equation}
 	\hat{\psi} \approx 
@@ -758,10 +789,11 @@
 	\operatorname{MSE}(\hat{\psi})&\approx \frac{2\sigma_\epsilon^2}{M} \nabla\psi^{\mathrm{T}} \bm{I} \nabla\psi= \frac{2\sigma_\epsilon^2}{M} \|\nabla\psi\|^2 \\
 	&= \frac{2\sigma_\epsilon^2}{M} \cdot \frac{x_1^2 + x_2^2}{(x_1^2 + x_2^2)^2}= \frac{2\sigma_\epsilon^2}{M(x_1^2 + x_2^2)}.
 \end{align}
-代入$x_1 = 2|T_1||T_2| \cos\psi$ 与 $x_2 = 2|T_1||T_2| \sin\psi$，可得均匀采样下的相位估计量$\hat{\psi}$的均方误差为：
-\begin{equation}
-	\operatorname{MSE}_{\min}(\hat{\psi}) = \frac{\sigma_\epsilon^2}{2 M |T_1|^2 |T_2|^2}.
+代入$x_1 = 2|T_1||T_2| \cos\psi$ 与 $x_2 = 2|T_1||T_2| \sin\psi$，并将式~\eqref{eq:cdma_sigma_eps}中的方差$\sigma_\epsilon^2$代入，可得均匀采样下的相位估计量$\hat{\psi}$的均方误差为：
+\begin{equation}\label{eq:cdma_mse_psi_final}
+	\operatorname{MSE}_{\min}(\hat{\psi}) = \frac{\sigma_\epsilon^2}{2 M |T_1|^2 |T_2|^2} = \frac{\sigma^4 + 2\sigma^2(|T_1|^2 + |T_2|^2)}{2 M |T_1|^2 |T_2|^2}.
 \end{equation}
+
 
 由以上分析可知，均匀采样不仅最小化了$\hat{\bm x}$的均方误差，同时也使得相位参数 $\hat{\psi}$ 的均方误差最小。
 这是由于在均匀采样下$\bm f_{12} = \mathbf{0}$，消除了直流参数$\hat{x}_0$ 与正余弦参数 $\hat{x}_1, \hat{x}_2$ 之间的估计耦合，避免了误差传递。同时，均匀采样使得$\bm F_{22}$的特征值相等，这保证了 $\hat{x}_1$ 和 $\hat{x}_2$ 具有相同的估计精度，此时合成角度的不确定度最小。由于参数估计问题完全解耦，$\hat{\bm x}$ 存在简洁的闭式解：
@@ -845,7 +877,7 @@ RECD算法的计算复杂度主要取决于波导数量$N_d$、单元数量$N_e$
 若要实现非迭代求解，关键在于建立一个独立于当前单元状态的统一参考。观察式~\eqref{eq:cdma_phi_star}可以发现，最终的有效信道增益的方向与所有单元的相移为$\pi/2$时的方向是一致的。
 定义所有单元相位均为 $\pi/2$ 时的全局参考信号为 $T_{\text{ref}} = j \sum_{l=1}^{N_e} u_{i,l}$，目标是求解当前单元信号$T_2$与$T_{\text{ref}}$的夹角$\psi_\lambda=\arg(T_{\text{ref}}T_2^*)$。
 根据几何关系，有：
-\begin{equation}\label{eq:TrefT2*}
+\begin{equation}\label{eq:cdma_TrefT2}
 	T_{\text{ref}}T_2^* = (T_1+jT_2)T_2^*=T_1 T_2^* + j|T_2|^2.
 \end{equation}
 回顾式~\eqref{eq:cdma_linear_model}中的线性回归模型，有$T_1 T_2^*=\frac{1}{2}(x_1 + j x_2)$，代入上式并对其取模的平方，可得：
@@ -861,7 +893,7 @@ RECD算法的计算复杂度主要取决于波导数量$N_d$、单元数量$N_e$
 \begin{equation}
 	|T_2|^2=\frac{x_0-\sigma^2-\sqrt{(x_0-\sigma^2)^2 - (x_1^2 + x_2^2)}}{2}.
 \end{equation}
-利用该能量值对观测矢量进行自干扰剔除，代入式~\eqref{eq:TrefT2*}，可得：
+利用该能量值对观测矢量进行自干扰剔除，代入式~\eqref{eq:cdma_TrefT2}，可得：
 \begin{equation}
 	T_{\text{ref}}T_2^* =\frac{x_1}{2}+
 	\frac{j\left( x_0+x_2-\sigma^2-\sqrt{(x_0-\sigma^2)^2 - (x_1^2 + x_2^2)}\right) }{2}.
@@ -897,19 +929,127 @@ RECD算法的计算复杂度主要取决于波导数量$N_d$、单元数量$N_e$
 
 本节
 
+\cite{li2022digital}
 
 
+\noindent\rule{\linewidth}{2pt}
 
+\subsection{仿真参数设置}
 
+为了全面评估所提的最优相位配置方法及基于RSSI的相位对齐算法的性能，本节将通过数值仿真进行验证与分析。本章考虑下行链路通信场景，基站配备的DMA阵列默认包含 $N_d = 10$ 条独立的微带波导，每条波导上集成 $N_e = 40$ 个辐射单元，总辐射单元数量为 $N = 400$。系统工作于典型的微波频段，载波频率设定为 $f_c = 2.6 \text{ GHz}$。
 
+对于DMA内部的波导传输物理特性，设定波导的衰减系数为 $\alpha = 0.5 \text{ Np/m}$，波数为 $\beta = 77.46 \text{ rad/m}$，相应的导波波长为 $\lambda_g = 2\pi/\beta$。为减小超表面单元间的互耦效应并满足弱耦合假设，辐射单元的间距设置为半个导波波长，即 $D = 0.5 \lambda_g$。
+
+在通信信道与信号参数方面，基站的发射功率设定为 $P_t = 30 \text{ dBm}$，单天线用户端的接收噪声功率为 $\sigma^2 = -100 \text{ dBm}$。假设接收用户与基站DMA阵列之间的距离为 $d = 100 \text{ m}$，大尺度衰落采用城市微小区非视距（UMi-NLOS）路径损耗模型，其路损值（单位：dB）计算公式为 $31.24 + 35.3 \log_{10}(d)$。
+
+对于本文提出的基于RSSI的相位对齐算法，在单次测量配置中，每个单元的相位采样点数默认设定为 $M = \textcolor{red}{XX}$，RECD算法的坐标下降迭代次数设定为 $K = \textcolor{red}{XX}$。除非在具体仿真图表中另有说明，本节所有的数值仿真均采用表~\ref{tab:cdma_sim_params}中列出的默认参数，且所有统计结果均通过 $N_{\mathrm{mc}} = \textcolor{red}{XX}$ 次相互独立的蒙特卡洛随机试验取平均得到。
+
+\begin{table}[!htbp]
+	\centering
+	\caption{DMA波束赋形与相位对齐算法仿真参数表}
+	\label{tab:cdma_sim_params}
+	\begin{tabular}{cc}
+		\toprule
+		\textbf{参数} & \textbf{数值} \\
+		\midrule
+		载波频率 $f_c$ & $2.6 \text{ GHz}$ \\
+		波导衰减系数 $\alpha$ & $0.5 \text{ Np/m}$ \\
+		波数 $\beta$ & $77.46 \text{ rad/m}$ \\
+		辐射单元间距 $D$ & $0.5 \lambda_g$ \\
+		波导数量 $N_d$ & $10$ \\
+		单条波导辐射单元数 $N_e$ & $40$ \\
+		基站至用户距离 $d$ & $100 \text{ m}$ \\
+		大尺度衰落路径损耗模型 & UMi-NLOS \\
+		基站发射功率 $P_t$ & $30 \text{ dBm}$ \\
+		用户端噪声功率 $\sigma^2$ & $-100 \text{ dBm}$ \\
+		每单元相位采样点数 $M$ & $\textcolor{red}{XX}$ \\
+		RECD算法迭代次数 $K$ & $\textcolor{red}{XX}$ \\
+		蒙特卡洛试验次数 $N_{\mathrm{mc}}$ & $\textcolor{red}{XX}$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
 
 
 \noindent\rule{\linewidth}{2pt}
 
 
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figSNRvsNe.pdf}
+	\caption{xxx}
+	\label{fig:cdma_figSNRvsNe}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+	\begin{subfigure}[b]{0.48\linewidth}
+		\centering
+		\includegraphics[height=5.8cm]{cdma/cdma_figSNRvsPhaseProjectionMethod.pdf}
+		\caption{xxx}
+	\end{subfigure}%
+	\hfill % 在两个子图之间水平填充空间
+	\begin{subfigure}[b]{0.48\linewidth}
+		\centering
+		\includegraphics[height=5.8cm]{cdma/cdma_figNormalizedPhaseProjection.pdf}
+		\caption{xxx}
+	\end{subfigure}
+	\vspace{-0.5cm}
+	\caption{xxx}
+	\label{fig:xxx}
+\end{figure}
 
 
-\noindent\rule{\linewidth}{2pt}
+\begin{figure}[!htbp]
+	\centering
+		\includegraphics[width=0.6\linewidth]{cdma/cdma_figSNRvsImperfectCSI.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+		\includegraphics[width=0.6\linewidth]{cdma/cdma_figOutageProbabilityvsPt.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+		\includegraphics[width=0.6\linewidth]{cdma/cdma_figErgodicCapacity.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
+	\caption{xxx}
+	\label{fig:}
+\end{figure}
+
+
+
 
 
 
