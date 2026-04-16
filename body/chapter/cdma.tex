@@ -593,7 +593,7 @@
 \end{equation}
 其中$\bm{\phi}_i = [\phi_{i,1}, \cdots, \phi_{i,N_e}]^\mathrm{T}$为待优化的相位向量。由于噪声项$\eta$的存在，单次测量的功率具有随机性，但以接收功率期望最大化为目标等价于最大化有用信号功率。针对此类问题，坐标下降法提供了一种高效的求解思路。该方法通过迭代机制，将复杂的多变量联合优化问题分解为一系列单变量子问题，即在每一步迭代中仅优化一个辐射单元的相位，同时保持其余单元状态固定，从而逐步逼近最优解。为了构建该算法，首先需要分析在固定其他单元配置时，如何确定目标单元的相位，使得信号功率最大。
 
-\subsection{功率期望最大化的相位估计方法}
+\subsection{功率期望最大化的相位估计方法}\label{sec:cdma_phase_est_method}
 
 本小节考虑对第$i$条波导上第$\lambda$个单元的相位进行优化。固定除第$\lambda$单元以外的所有其他单元的相位$\{\phi_{i,l}\}_{l \neq \lambda}$，仅将当前单元的相位$\phi_{i,\lambda}$视为变量。
 对式~\eqref{eq:cdma_rssi_power_def}中的可变量与不变量进行分离，令$T_1 =j\frac{u_{i,\lambda}}{2} + \sum_{l\neq \lambda} u_{i,l} \frac{j+e^{j\phi_{i,l}}}{2}, \; T_2=\frac{u_{i,\lambda}}{2}$，接收功率可表示为$p(\phi_{i,\lambda})=\left| T_1+T_2 e^{j\phi_{i,\lambda}}+\eta \right|^2 $。利用噪声$\eta \sim \mathcal{CN}(0, \sigma^2)$的统计特性，接收功率的期望可推导为：
@@ -927,139 +927,125 @@ RECD算法的计算复杂度主要取决于波导数量$N_d$、单元数量$N_e$
 
 \section{数值仿真分析}
 
-本节
-
-\cite{li2022digital}
-
-
-\noindent\rule{\linewidth}{2pt}
-
 \subsection{仿真参数设置}
 
-为了全面评估所提的最优相位配置方法及基于RSSI的相位对齐算法的性能，本节将通过数值仿真进行验证与分析。本章考虑下行链路通信场景，基站配备的DMA阵列默认包含 $N_d = 10$ 条独立的微带波导，每条波导上集成 $N_e = 40$ 个辐射单元，总辐射单元数量为 $N = 400$。系统工作于典型的微波频段，载波频率设定为 $f_c = 2.6 \text{ GHz}$。
-
-对于DMA内部的波导传输物理特性，设定波导的衰减系数为 $\alpha = 0.5 \text{ Np/m}$，波数为 $\beta = 77.46 \text{ rad/m}$，相应的导波波长为 $\lambda_g = 2\pi/\beta$。为减小超表面单元间的互耦效应并满足弱耦合假设，辐射单元的间距设置为半个导波波长，即 $D = 0.5 \lambda_g$。
-
-在通信信道与信号参数方面，基站的发射功率设定为 $P_t = 30 \text{ dBm}$，单天线用户端的接收噪声功率为 $\sigma^2 = -100 \text{ dBm}$。假设接收用户与基站DMA阵列之间的距离为 $d = 100 \text{ m}$，大尺度衰落采用城市微小区非视距（UMi-NLOS）路径损耗模型，其路损值（单位：dB）计算公式为 $31.24 + 35.3 \log_{10}(d)$。
-
-对于本文提出的基于RSSI的相位对齐算法，在单次测量配置中，每个单元的相位采样点数默认设定为 $M = \textcolor{red}{XX}$，RECD算法的坐标下降迭代次数设定为 $K = \textcolor{red}{XX}$。除非在具体仿真图表中另有说明，本节所有的数值仿真均采用表~\ref{tab:cdma_sim_params}中列出的默认参数，且所有统计结果均通过 $N_{\mathrm{mc}} = \textcolor{red}{XX}$ 次相互独立的蒙特卡洛随机试验取平均得到。
-
-\begin{table}[!htbp]
-	\centering
-	\caption{DMA波束赋形与相位对齐算法仿真参数表}
-	\label{tab:cdma_sim_params}
-	\begin{tabular}{cc}
-		\toprule
-		\textbf{参数} & \textbf{数值} \\
-		\midrule
-		载波频率 $f_c$ & $2.6 \text{ GHz}$ \\
-		波导衰减系数 $\alpha$ & $0.5 \text{ Np/m}$ \\
-		波数 $\beta$ & $77.46 \text{ rad/m}$ \\
-		辐射单元间距 $D$ & $0.5 \lambda_g$ \\
-		波导数量 $N_d$ & $10$ \\
-		单条波导辐射单元数 $N_e$ & $40$ \\
-		基站至用户距离 $d$ & $100 \text{ m}$ \\
-		大尺度衰落路径损耗模型 & UMi-NLOS \\
-		基站发射功率 $P_t$ & $30 \text{ dBm}$ \\
-		用户端噪声功率 $\sigma^2$ & $-100 \text{ dBm}$ \\
-		每单元相位采样点数 $M$ & $\textcolor{red}{XX}$ \\
-		RECD算法迭代次数 $K$ & $\textcolor{red}{XX}$ \\
-		蒙特卡洛试验次数 $N_{\mathrm{mc}}$ & $\textcolor{red}{XX}$ \\
-		\bottomrule
-	\end{tabular}
-\end{table}
+本节将通过数值仿真验证所提的最优相位配置方法及基于RSSI的相位对齐算法的性能。考虑下行链路通信场景，基站配备的DMA阵列默认包含 $N_d = 10$ 条独立的微带波导，每条波导上集成 $N_e = 40$ 个辐射单元，总辐射单元数量为 $N = 400$。设定波导的衰减系数为 $\alpha = 0.5 \text{ Np/m}$，波数为 $\beta = 77.46 \text{ rad/m}$，相应的导波波长为 $\lambda_g = 2\pi/\beta$\cite{li2022digital}。为减小DMA单元间的互耦效应并满足弱耦合假设，辐射单元的间距设置为半个导波波长，即 $D = 0.5 \lambda_g$。
+系统工作于典型的微波频段，载波频率设定为 $f_c = 2.6 \text{ GHz}$。基站的发射功率设定为 $P_t = 30 \text{ dBm}$，用户端的接收噪声功率为 $\sigma^2 = -100 \text{ dBm}$，基站与用户之间的距离为 $d = 100 \text{ m}$。大尺度衰落采用3GPP城市微小区路径损耗模型，其路损值计算公式为：
+\begin{equation}
+	\mathrm{PL} = 31.24 + 35.3 \log_{10}(d).
+\end{equation}
+除非在具体仿真中另有说明，本节所有的数值仿真均采用上述默认参数，且所有统计结果均通过 $N_{\mathrm{mc}} = 2000$ 次蒙特卡洛随机试验取平均得到。
 
 
-\noindent\rule{\linewidth}{2pt}
-
+\subsection{理论性能仿真与验证}
 
 \begin{figure}[!htbp]
 	\centering
 	\includegraphics[width=0.6\linewidth]{cdma/cdma_figSNRvsNe.pdf}
-	\caption{xxx}
+	\caption{平均信噪比随单条波导辐射单元数量 $N_e$ 的变化趋势}
 	\label{fig:cdma_figSNRvsNe}
 \end{figure}
+
+首先，图~\ref{fig:cdma_figSNRvsNe}展示了在不同波导衰减系数$\alpha$下，系统平均信噪比随单条波导上辐射单元数量$N_e$的变化关系。图中显示，对于所有的$\alpha$取值，仿真结果均与定理~\ref{the:cdma_gamma}给出的理论值完美吻合，验证了前文对平均信噪比推导的准确性。各条曲线的变化趋势验证了推论~\ref{cor:cdma_Ne_opt}中揭示的非单调特性：随着$N_e$的增加，平均信噪比呈现出先快速上升、达到峰值后缓慢下降的规律。
+此外，图中还展示了波导衰减程度对系统性能及最佳阵列规模的影响。衰减系数$\alpha$越大，系统的最大平均信噪比越低，且达到峰值所需的单元数量也越少。图中分别标注了真实最优单元数量与根据式~\eqref{eq:cdma_Ne_opt}计算得到的近似最优数量。客观来看，随着 $\alpha$ 的增大，两者在横轴上出现了一定的偏差，近似公式给出的估计值略大于真实最优值。然而，从性能表现来看，由于曲线在峰值区域较为平缓，近似最优数量时的信噪比与全局最大信噪比之间的差距较小。这表明，近似公式依然能够作为一种快速的指导准则，帮助设计者根据衰减特性圈定最佳的天线规模区间，从而避免盲目增加天线单元带来的冗余与性能损失。
+
 
 \begin{figure}[!htbp]
 	\centering
 	\begin{subfigure}[b]{0.48\linewidth}
 		\centering
 		\includegraphics[height=5.8cm]{cdma/cdma_figSNRvsPhaseProjectionMethod.pdf}
-		\caption{xxx}
+		\caption{平均信噪比对比}
 	\end{subfigure}%
 	\hfill % 在两个子图之间水平填充空间
 	\begin{subfigure}[b]{0.48\linewidth}
 		\centering
 		\includegraphics[height=5.8cm]{cdma/cdma_figNormalizedPhaseProjection.pdf}
-		\caption{xxx}
+		\caption{归一化渐近性能对比}
 	\end{subfigure}
 	\vspace{-0.5cm}
-	\caption{xxx}
-	\label{fig:xxx}
+	\caption{三种相位配置方法的系统性能对比}
+	\label{fig:cdma_phase_comparison}
 \end{figure}
+
+图~\ref{fig:cdma_phase_comparison}对比了所提的最优相位配置方法与现有研究中常用的直接映射松弛与欧氏投影松弛的性能表现。从图~\ref{fig:cdma_phase_comparison}(a)可以看出，两种松弛算法的仿真结果与推论~\ref{cor:cdma_gamma_relax}和推论~\ref{cor:cdma_gamma_proj}给出的理论曲线重合，并且三者均保持了随$N_e$先增后减的趋势。在绝对性能上，最优相位配置方法在整个$N_e$区间内均优于两种松弛方案，且直接映射松弛优于欧氏投影松弛，与前文的分析一致。为了验证前文的渐近性能分析，图~\ref{fig:cdma_phase_comparison}(b)以直接映射松弛的平均信噪比为基准，绘制了相应的归一化性能曲线。从图中可以看出，当每条波导上的辐射单元数量$N_e$较小时，最优方法带来的性能提升最为显著，相对增益可达 $70\%$ 左右。随着$N_e$的进一步增加，曲线逐渐趋于平缓。当$N_e$足够大时，最优相位配置与欧氏投影松弛的归一化性能精确地收敛于虚线所示的渐近界限，这与表~\ref{tab:cdma_comparison}中提取的渐近归一化性能一致。这表明，即使在大规模DMA阵列中，所提的最优相位配置方法相对于传统的松弛投影策略，依然能够保持一个恒定的性能优势。
 
 
 \begin{figure}[!htbp]
 	\centering
-		\includegraphics[width=0.6\linewidth]{cdma/cdma_figSNRvsImperfectCSI.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figSNRvsImperfectCSI.pdf}
+	\caption{平均信噪比随相对信道估计误差系数 $\xi$ 的变化趋势}
+	\label{fig:cdma_figSNRvsImperfectCSI}
 \end{figure}
+
+
+图~\ref{fig:cdma_figSNRvsImperfectCSI}评估了非完美CSI对系统性能的影响，展示了平均信噪比随相对信道估计误差系数 $\xi$ 的变化曲线。从图中可以看出，在不同的波导数量 $N_d$ 配置下，仿真结果与推论~\ref{cor:cdma_gamma_imp}给出的理论曲线均吻合。随着误差系数 $\xi$ 的增大，由于信道估计的不准确导致相位发生严重失配，系统的平均信噪比呈现出显著的下降趋势。特别地，当信道估计完全失效时，不同波导数量对应的曲线最终收敛于同一个极低的信噪比水平，这一现象与前文的理论分析一致。另一方面，在相同的估计误差水平下，增加波导数量 $N_d$ 能够提升系统的整体信噪比。这表明，在信道获取质量受限的实际通信场景中，通过适度扩大基站端的DMA阵列规模，可以有效地弥补由于CSI不完美所带来的性能损失，从而保障系统传输的可靠性。
 
 \begin{figure}[!htbp]
 	\centering
-		\includegraphics[width=0.6\linewidth]{cdma/cdma_figOutageProbabilityvsPt.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figOutageProbabilityvsPt.pdf}
+	\caption{系统中断概率随发射功率 $P_t$ 的变化曲线}
+	\label{fig:cdma_figOutageProbabilityvsPt}
 \end{figure}
+
+为了更直观地评估DMA系统在最优相位配置下的通信可靠性，图~\ref{fig:cdma_figOutageProbabilityvsPt}展示了在不同波导数量配置下，中断概率随发射功率 $P_t$ 的变化关系，其中目标信噪比阈值设定为 $\gamma_{\text{th}} = 40 \text{ dB}$。从图中可以看出，基于伽马分布推导的中断概率理论曲线与蒙特卡洛仿真数据相吻合，说明对瞬时信噪比进行伽马分布建模是较为精确的。从性能趋势上看，所有配置下的曲线均呈现出典型的瀑布式下降特征。随着发射功率的提升，系统的中断概率呈指数级迅速降低。此外，随着 $N_d$ 从 $4$ 增加到 $20$，中断概率曲线大幅向左平移，表明增加波导数量能够提供更强的波束赋形增益，从而降低基站端的发射功率。
+
 
 \begin{figure}[!htbp]
 	\centering
-		\includegraphics[width=0.6\linewidth]{cdma/cdma_figErgodicCapacity.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figErgodicCapacity.pdf}
+	\caption{系统遍历容量随发射功率 $P_t$ 的变化曲线}
+	\label{fig:cdma_figErgodicCapacity}
 \end{figure}
+
+最后，图~\ref{fig:cdma_figErgodicCapacity}展示了在不同DMA阵列配置下，系统的遍历容量随基站发射功率 $P_t$ 的变化关系。图中同时绘制了蒙特卡洛仿真结果、式~\eqref{eq:cdma_capacity_upper}的理论上界，以及低信噪比和高信噪比条件下的渐近近似曲线。首先可以观察到，理论上界的紧致程度与DMA阵列的规模密切相关。对于黄色曲线所代表的小规模阵列，受瞬时信噪比起伏的影响，仿真值和理论上界有一定距离。然而，如前文分析所述，随着单元数量的增加，大量独立信道增益的叠加使得瞬时信噪比的波动变小，理论上界变得非常紧致。其次，两组渐近近似曲线也分别在各自的适用区间内表现出高度的准确性。在低发射功率区域，低SNR近似曲线有效追踪了容量的非线性增长；而在高发射功率区域，仿真点与高SNR近似曲线重合，验证了渐近推导的正确性。
+
+
+\subsection{基于RSSI的相位对齐算法仿真分析}
 
 \begin{figure}[!htbp]
 	\centering
-	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figLinearEstimator.pdf}
+	\caption{单个单元相位估计的均方误差随接收信噪比的变化曲线}
+	\label{fig:cdma_figLinearEstimator}
 \end{figure}
+
+为了验证第~\ref{sec:cdma_phase_est_method}节中的相位估计理论，图~\ref{fig:cdma_figLinearEstimator}评估了相位估计量 $\hat{\psi}$ 的均方误差随接收信噪比的变化规律。从图中首先可以观察到，在较高信噪比区域，不同配置下的蒙特卡洛仿真曲线均与理论渐近近似虚线贴合，证明了线性回归误差分析模型的准确性。在采样策略的对比方面，当采样点数同为 $M=3$ 时，均匀采样策略的估计误差低于相位取值为 $\{0, \pi/2, \pi\}$ 的非均匀采样策略。这一结果印证了前文通过最小化信息矩阵逆的迹得出的理论结论，即均匀采样能最小化估计的MSE。此外，横向对比不同 $M$ 取值的均匀采样曲线可知，均方误差随着 $M$ 的增加呈比例下降。这表明在实际应用中，适当增加采样点数能提升相位估计的抗噪性能。
 
 \begin{figure}[!htbp]
 	\centering
-	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figLinearEstimatorMSEvsPhase.pdf}
+	\caption{单个单元相位估计的均方误差随真实相位夹角 $\psi$ 的变化曲线}
+	\label{fig:cdma_figLinearEstimatorMSEvsPhase}
 \end{figure}
+
+在接收信噪比为 $30 \text{ dB}$ 的条件下，图~\ref{fig:cdma_figLinearEstimatorMSEvsPhase}展示了估计误差随 $T_1$ 和 $T_2$ 真实相位夹角 $\psi$ 的变化规律。当采样点数 $M \ge 4$ 时，仿真数据贴合理论水平线，表现出各向同性的特征；然而，当 $M=3$ 时，MSE呈现出随 $\psi$ 周期性波动的特征。其在 $[-\pi, \pi]$ 区间内包含三个完整的周期。这是因为在功率检测模型中，单次测量的观测噪声方差随相位夹角而波动，体现出异方差性。波动的方差项会通过三角函数乘积产生三倍频谐波项，导致 $M=3$ 时的估计方差受 $\psi$ 调制而发生波动。相比之下，当 $M \ge 4$ 时，高阶谐波项在对称均匀采样下抵消，使得估计方差呈现为与 $\psi$ 无关的水平直线。上述分析表明，尽管 $M=3$ 已满足最小参数求解自由度，但为确保在任意相位夹角下获得一致的估计精度，通常采样点数应至少设定为 $M=4$。
 
 \begin{figure}[!htbp]
 	\centering
-	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figConvergence.pdf}
+	\caption{不同算法的归一化接收功率随测量次数的收敛曲线}
+	\label{fig:cdma_figConvergence}
 \end{figure}
+
+在采样点数 $M=4$ 的条件下，图~\ref{fig:cdma_figConvergence}展示了在高、低两种发射功率场景下，系统的归一化接收功率随测量次数的变化情况。其中，随机搜索算法为基准方案，完美CSI条件下的最优接收功率为归一化上限。从图中可以观察到，RS算法的收敛速度缓慢且性能低下。相比之下，本文提出的RECD算法和NI-REPA算法收敛速度较快。迭代两次的RECD算法表现为平滑的上升曲线；而NI-REPA算法由于采取集中测量、统一更新的方式，呈现出阶梯式跃升的特征。在高发射功率下，两种算法的归一化接收功率都达到了0.95以上，且NI-REPA算法的性能略优于RECD算法。这一结果表明，NI-REPA算法是一种高效的DMA阵列配置方案。
 
 \begin{figure}[!htbp]
 	\centering
-	%	\includegraphics[width=0.6\linewidth]{cdma/.pdf}
-	\caption{xxx}
-	\label{fig:}
+	\includegraphics[width=0.6\linewidth]{cdma/cdma_figMNAPvsM.pdf}
+	\caption{不同采样点数下算法归一化接收功率随发射功率 $P_t$ 的变化曲线}
+	\label{fig:cdma_figMNAPvsM}
 \end{figure}
 
-
-
-
-
-
-\noindent\rule{\linewidth}{2pt}
-
+最后，为了进一步探究采样点数 $M$ 对性能的影响，图~\ref{fig:cdma_figMNAPvsM}展示了不同配置下各个算法归一化接收功率随发射功率 $P_t$ 的变化规律。图中的曲线反映了所提算法在不同参数下的抗噪能力。随着 $P_t$ 增加，算法的相位估计误差减小，最终的归一化接收功率逐渐趋于理想情况。当发射功率达到 $40 \text{ dBm}$ 时，NI-REPA 算法的归一化接收功率超过 $0.95$，RECD 算法也突破了 $0.9$。此外，通过对比 $M=3,4,8$ 的曲线可知，增加采样点能改善低功率区域的性能，提高估计的鲁棒性。
 
 
 \section{本章小结}
 
+
+
+
 \noindent\rule{\linewidth}{2pt}
 
 
-
+\noindent\rule{\linewidth}{2pt}
