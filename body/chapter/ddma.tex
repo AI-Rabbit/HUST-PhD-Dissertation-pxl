@@ -273,16 +273,7 @@
 \begin{equation}\label{eq:ddma_E_S2_closed}
 	\mathbb{E}[\mathcal{S}_{\text{rand}}^2] = \frac{M}{2} - \frac{M(M-1)}{2} J_{M-2} + \frac{\pi M(M-1)^2}{2} (I_{M-2} - I_{M-1}).
 \end{equation}
-上式对于 $M=2$ 的 情况同样适用。
-
----
-
-值得指出的是，在推导交叉项 $E_{\text{cross}}$ 时引入了 $M \ge 3$ 的假设以确保二维联合概率密度的存在性。然而，该闭式解在代数结构上具有完备性，自然兼容 $M=2$ 的边界情况。具体而言，当 $M=2$（即 1 比特量化）时，两个相位间隔满足严格的线性约束 $\delta_2 = 2\pi - \delta_1$。此时目标因子退化为 $\mathcal{S}_{\text{rand}} = 2\sin(\delta_1/2)$，利用一维均匀分布极易求得其真实二阶矩为 $\mathbb{E}[\mathcal{S}_{\text{rand}}^2] = 2$。另一方面，若将 $M=2$ 代入式~\eqref{eq:ddma_E_S2_closed}，结合初始积分值 $J_0=0$、$I_0=2/\pi$ 及 $I_1=1/\pi$，计算结果同样严格为 $2$。这证明了式~\eqref{eq:ddma_E_S2_closed} 所给出的闭式解对任意离散阶数 $M \ge 2$ 均普遍成立。
-
----
-
-
-将式~\eqref{eq:ddma_ESrandom_closed_floor}与式~\eqref{eq:ddma_E_S2_closed}代入定理~\ref{the:ddma_gamma_cpp}，可得到随机相位约束下 DMA 系统的平均信噪比基准。为了获得最佳的波束赋形增益，需要优化相位集合 $\bm \Phi_M$ 的分布，以最大化因子 $\mathcal{S}$。该优化问题可表述为在间隔之和满足一定的约束条件下，寻找最优的间隔序列 $\{\delta_m\}$：
+上式对于 $M=2$ 的 情况同样适用。将式~\eqref{eq:ddma_ESrandom_closed_floor}与式~\eqref{eq:ddma_E_S2_closed}代入定理~\ref{the:ddma_gamma_cpp}，可得到随机相位约束下 DMA 系统的平均信噪比基准。为了获得最佳的波束赋形增益，需要优化相位集合 $\bm \Phi_M$ 的分布，以最大化因子 $\mathcal{S}$。该优化问题可表述为在间隔之和满足一定的约束条件下，寻找最优的间隔序列 $\{\delta_m\}$：
 \begin{align}\label{eq:ddma_opt_phase_question}
 	\max_{\{\delta_m\}} \quad & \mathcal{S} = \sum_{m=1}^M \sin \frac{\delta_m}{2}, \\ 
 	\text{s.t.} \quad & \sum_{m=1}^M \delta_m = 2\pi, \quad
@@ -697,11 +688,83 @@ ADSPS算法不仅在理论上严格保证了离散量化约束下波束赋形解
 对比上述两个命题可以发现，基于局部积分均值特性推导的命题~\ref{pro:ddma_adsps_Mbit_bound}提供了一个更为普适且紧致的下界，证明了所提ADSPS算法的性能下限由于启发式的CPP算法。
 随着量化阶数 $M$ 的增加，下界因子 $( \frac{M}{\pi} \sin \frac{\pi}{M} )^2$ 将迅速逼近 1，说明ADSPS算法在高分辨率条件下能快速逼近连续最优解。
 
+\section{数值仿真分析}
+
+\subsection{仿真参数设置}
+
+本节通过数值仿真来验证本章提出的CPP算法与ADSPS算法在离散相移约束下的波束赋形性能，并评估不同相位分布策略对系统平均信噪比的具体影响。仍然考虑下行链路通信场景，基站端的DMA阵列默认包含 $N_d = 10$ 条平行微带波导，每条波导集成 $N_e = 40$ 个辐射单元，总计 $N = 400$ 个天线单元。波导相关的物理参数与上一章保持一致：衰减系数 $\alpha = 0.5 \text{ Np/m}$，波数 $\beta = 77.46 \text{ rad/m}$，单元间距设为半个导波波长。本章重点关注受限硬件条件下的系统性能，量化精度的设定将在对应的仿真中具体说明。
+系统载波频率设为 $f_c = 2.6 \text{ GHz}$。基站发射功率 $P_t = 30 \text{ dBm}$，接收端噪声功率 $\sigma^2 = -80 \text{ dBm}$，收发两端距离 $d = 100 \text{ m}$。
+本章小尺度衰落采用莱斯衰落模型，莱斯因子 $\kappa = 10$；大尺度衰落采用3GPP城市宏小区视距模型，其路径损耗（单位：dB）的计算公式为：
+\begin{equation}
+	\mathrm{PL} = 36.3 + 22 \log_{10}(d).
+\end{equation}
+如果没有特别说明，后续所有的数值仿真都将基于上述参数开展。各图表中的统计曲线均由 $N_{\mathrm{mc}} = 2000$ 次独立的蒙特卡洛随机试验取平均得到。
+
+\subsection{离散相移统计特性理论验证}
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ddma/ddma_figSNRvsNe.pdf}
+	\caption{系统平均信噪比随波导单元数 $N_e$ 的变化趋势及理论验证}
+	\label{fig:ddma_figSNRvsNe}
+\end{figure}
+
+首先验证定理~\ref{the:ddma_gamma_cpp}所推导的平均信噪比的准确性。图~\ref{fig:ddma_figSNRvsNe}展示了系统平均信噪比随单条波导单元数 $N_e$ 的变化趋势。为了覆盖定理的适用范围，仿真设定了五种不同的相位分布场景：理想连续相移、高/低精度均匀相移、特定的非均匀相移以及作为基准的1 bit随机相移。从图中可以看出，在所有相位配置下，理论实线与仿真散点均实现了精确吻合，证明了莱斯信道下离散相移DMA系统平均信噪比解析推导的正确性。对比不同曲线间的相对位置可以发现，在相同的量化阶数下，均匀相移配置的信噪比优于非均匀相移。此外，所有曲线均在同一位置达到增益峰值，这表明使得系统性能最大化的最优天线单元数与相位量化方式无关，仅由波导衰减决定。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ddma/ddma_figQuantizationLossPhase.pdf}
+	\caption{系统归一化性能随硬件移相能力 $C$ 的演化规律}
+	\label{fig:ddma_figQuantizationLossPhase}
+\end{figure}
+
+接着，考虑定理~\ref{the:ddma_opt_phase}中的移相能力受限场景，图~\ref{fig:ddma_figQuantizationLossPhase}绘制了归一化性能随系统最大移相能力 $C$ 的演化规律。图中垂直虚线标定了针对不同量化阶数 $M$ 的临界阈值 $C_{\text{th}} = \frac{2\pi(M-1)}{M}$。从图中可以观察到，各条曲线初期均随 $C$ 的拓宽而单调递增；当移相能力跨过对应的理论阈值后，各曲线达到饱和，准确收敛于全周期均匀量化下的性能上界。更为关键的是，当移相能力严重受限时，采用高精度量化相比于低精度量化所带来的额外增益相当微小。因此，在此类场景下，系统设计的重心应优先放在放宽器件的物理移相范围上，而非盲目追求高分辨率的相位控制。
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ddma/ddma_figQuantizationLoss.pdf}
+	\caption{均匀量化下不同算法的归一化性能随波导单元数 $N_e$ 的变化对比}
+	\label{fig:ddma_figQuantizationLoss}
+\end{figure}
+
+进一步地，为了对比本章所提算法与传统直接映射松弛算法在处理离散约束时的性能，图~\ref{fig:ddma_figQuantizationLoss}给出了均匀量化场景下系统归一化性能随波导单元数 $N_e$ 的演变规律。图中结果直观地印证了式~\eqref{eq:ddma_gamma_cpp_uni}与式~\eqref{eq:ddma_gamma_rlx_uni}的对比结论，CPP算法的量化损失在任何量化精度下均小于RLX算法，且该优势在低分辨率量化时尤为显著。从具体数值来看，随着阵列规模 $N_e$ 的扩展，系统的量化损失迅速收敛至稳定状态。在1比特量化条件下，传统RLX算法的量化损失约为 $4.7 \text{ dB}$；而CPP算法的损失约为 $3.4 \text{ dB}$，比传统方法损失低 $1.3 \text{ dB}$。当精度提升至 $M=4$ 时，CPP算法的量化损失已降至约 $0.8 \text{ dB}$；而对于 $M=8$ 的高精度配置，CPP算法的量化损失不足 $0.2 \text{ dB}$。
+
+
+\subsection{角域排序分划搜索算法性能验证}
+
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{ddma/ddma_figExhaustive.pdf}
+	\caption{不同相移配置下ADSPS算法与穷举搜索及CPP算法的性能对比}
+	\label{fig:ddma_figExhaustive}
+\end{figure}
+
+本小节通过数值仿真评估所提ADSPS算法的波束赋形性能。图~\ref{fig:ddma_figExhaustive}对比了ADSPS算法、CPP算法以及作为最优上界的穷举搜索法的系统平均信噪比。由于穷举搜索的计算复杂度随天线单元数呈指数级膨胀，仿真的单条波导单元数设定在 $N_e \le 14$ 的范围内进行。从图中可以看出，无论系统配置为均匀相移还是非均匀受限相移，ADSPS算法所绘制的实线均与穷举搜索获取的散点严密重合，证明了该算法能得到任意离散约束下的全局最优解。
+此外，通过与CPP算法对比可以发现，算法间的性能差距与量化相移数关系密切。在较高量化精度时，CPP算法的性能与ADSPS算法接近；但当硬件降级至1比特量化或处于非均匀受限状态时，CPP算法的平均SNR比ADSPS算法低约 $0.3 \text{ dB}$。
+
+
+
+
+\noindent\rule{\linewidth}{2pt}
 
 \noindent\rule{\linewidth}{2pt}
 
 
-\section{数值仿真分析}
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+
+
 
 
 
@@ -709,11 +772,19 @@ ADSPS算法不仅在理论上严格保证了离散量化约束下波束赋形解
 
 \textcolor{red}{之后再写}
 
+
+
+
+
+
+
+
+
 \begin{figure}[!htbp]
 	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
+	\includegraphics[width=0.6\linewidth]{ddma/ddma_figCDF.pdf}
 	\caption{xxx}
-	\label{fig:}
+	\label{fig:ddma_figCDF}
 \end{figure}
 
 \begin{figure}[!htbp]
@@ -730,54 +801,7 @@ ADSPS算法不仅在理论上严格保证了离散量化约束下波束赋形解
 	\label{fig:}
 \end{figure}
 
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
 
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
-
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
-
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
-
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
-
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
-
-\begin{figure}[!htbp]
-	\centering
-	%	\includegraphics[width=0.6\linewidth]{ddma/.pdf}
-	\caption{xxx}
-	\label{fig:}
-\end{figure}
 
 
 %由于 $a_1, a_2, M$ 均为正数，这从理论上直接证明了在相同的量化条件下，CPP算法能够获得比松弛算法更高的波束赋形增益。为了量化评估相位离散化带来的性能折损，定义连续相移下的理想平均信噪比为 $\gamma^\star \triangleq \lim_{M \to \infty} \gamma^{\text{CPP}}_{\text{uni}}$。利用极限 $\lim_{M \to \infty} M \sin(\frac{\pi}{M}) = \pi$，可得：
