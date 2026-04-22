@@ -1,33 +1,4 @@
 \chapter{数学符号约定}\label{app:notations}
 
-在本文中，斜体表示一般标量，小写粗体表示向量，大写粗体表示矩阵，花体表示集合或函数。
-$(\cdot)^\mathrm{T}$、$(\cdot)^\ast$、$(\cdot)^\mathrm{H}$和$(\cdot)^{-1}$分别表示向量或矩阵的转置运算、共轭运算、共轭转置运算和逆运算。
-$\mathbb{E}[\cdot]$或$\mathbb{E}(\cdot)$表示统计平均。
-
-紧急：表的编号错误，还是用一段话说这个。
-
-，$\lceil \cdot \rceil$ 表示向上取整操作
-
-\renewcommand{\arraystretch}{1.3}
-
-\begin{table}[!htbp]
-	\centering
-	\caption{数学符号说明表}
-	\label{tab:notations}
-	\begin{tabular}{ll}
-		\toprule
-		符号                   & 说明          \\ \midrule
-		$\mathrm{tr}(\bm X)$ & 矩阵$\bm X$的迹 \\
-		$\bm I_{N}$          &             \\
-		$\bm 1_N$            &             \\
-		$\bm 0$              &             \\
-		                     &             \\
-		                     &             \\
-		                     &             \\
-		                     &             \\
-		                     &             \\
-		$\mathbb{E}[\cdot]$  & 统计平均        \\ \bottomrule
-	\end{tabular}%
-	
-\end{table}%
+在本文中，斜体表示一般标量，小写粗体表示向量，大写粗体表示矩阵，花体表示集合或函数。$\mathbb{C}^{M \times N}$和$\mathbb{R}^{M \times N}$分别表示维度为$M \times N$的复数矩阵空间和实数矩阵空间；$\bm{I}_N$表示尺寸为$N \times N$的单位矩阵，$\bm{0}$表示元素全为$0$的向量或矩阵；$\bm{A} \succ 0$表示矩阵$\bm{A}$为正定矩阵。对于矩阵和向量运算，$(\cdot)^\mathrm{T}$、$(\cdot)^\ast$、$(\cdot)^\mathrm{H}$、$(\cdot)^{-1}$和$\operatorname{tr}(\cdot)$分别表示转置、共轭、共轭转置、逆运算以及矩阵的迹运算；$\operatorname{diag}(\cdot)$表示以给定元素或向量为对角线构成的对角矩阵；$\langle \bm{x}, \bm{y} \rangle$表示向量$\bm{x}$和$\bm{y}$的内积；$\odot$和$\otimes$分别表示矩阵的哈达玛积和克罗内克积；$|\cdot|$表示复数的模长或实标量的绝对值，$\|\cdot\|$表示向量的二阶诱导范数。在复数与数学函数方面，$\Re\{\cdot\}$和$\Im\{\cdot\}$分别表示提取复数的实部和虚部，$\arg(\cdot)$表示计算复数的辐角；$\lfloor \cdot \rfloor$和$\lceil \cdot \rceil$分别表示向下和向上取整运算；$\bmod$表示取模运算，$\operatorname{atan2}(y, x)$表示四象限反正切函数，$\operatorname{clip}(\cdot)$表示变量的边界截断操作。在微积分运算中，$\nabla$表示梯度算子，$\frac{\partial y}{\partial x}$表示$y$关于$x$的偏导数。在概率与统计方面，$\operatorname{Pr}(\cdot)$表示随机事件发生的概率；$\mathbb{E}[\cdot]$或$\mathbb{E}(\cdot)$表示统计平均；$\operatorname{Var}(\cdot)$和$\operatorname{Cov}(\cdot)$分别表示随机变量的方差和协方差矩阵；$\bm{x} \sim \mathcal{CN}(\bm{\mu}, \bm{\Sigma})$表示随机向量$\bm{x}$服从均值为$\bm{\mu}$、协方差矩阵为$\bm{\Sigma}$的循环对称复高斯分布。最后，$\triangleq$表示定义为，$\approx$表示近似等于，$\propto$表示正比于。
 
