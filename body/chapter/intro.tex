@@ -2,8 +2,8 @@
 
 \section{研究背景与意义}\label{sec:background}
 
-近年来，随着第五代移动通信技术（The Fifth Generation Mobile Communication Technology, 5G）在全球范围内的规模化商用部署，移动通信技术在提升信息传输效率、拓展应用场景以及推动社会信息化进程等方面发挥了重要作用\cite{YouXiaoHu20145gyidongtongxinfazhanqushiyuruoganguanjianjishu, ahmed2018survey}。依托大规模多输入多输出（Massive Multiple-Input and Multiple-Output, mMIMO）、毫米波（Millimeter Wave, mmWave）通信以及超密集组网（Ultra-Dense Network, UDN）等关键技术，5G网络在峰值速率、频谱效率和连接密度等性能指标上相较第四代移动通信技术（The Fourth Generation Mobile Communication Technology, 4G）实现了数量级的提升，初步支撑了增强型移动宽带（Enhanced Mobile Broadband, eMBB）、大规模机器通信（Massive Machine-Type Communications, mMTC）以及超可靠低时延通信（Ultra-Reliable and Low-Latency Communications, URLLC）这三大应用场景的需求\cite{marzetta2016fundamentals,marzetta2015massive,larsson2014massive,bennis2018ultrareliable}。
-然而，远程医疗、无人驾驶和沉浸式虚拟现实等技术的蓬勃发展，对无线链路的速率、时延和能效等要求越来越高，使得现有技术的局限性逐渐显现出来，人们开始了对第六代移动通信技术（The Sixth Generation Mobile Communication Technology, 6G）的预研\cite{zhao20196g,ZhangPing20196gyidongtongxinjishuzhanwang,you20216g}。
+近年来，随着第五代移动通信技术（The Fifth Generation Mobile Communication Technology, 5G）在全球范围内的规模化商用部署，移动通信技术在提升信息传输效率、拓展应用场景以及推动社会信息化进程等方面发挥了重要作用\cite{you20145g, ahmed2018survey}。依托大规模多输入多输出（Massive Multiple-Input and Multiple-Output, mMIMO）、毫米波（Millimeter Wave, mmWave）通信以及超密集组网（Ultra-Dense Network, UDN）等关键技术，5G网络在峰值速率、频谱效率和连接密度等性能指标上相较第四代移动通信技术（The Fourth Generation Mobile Communication Technology, 4G）实现了数量级的提升，初步支撑了增强型移动宽带（Enhanced Mobile Broadband, eMBB）、大规模机器通信（Massive Machine-Type Communications, mMTC）以及超可靠低时延通信（Ultra-Reliable and Low-Latency Communications, URLLC）这三大应用场景的需求\cite{marzetta2016fundamentals,marzetta2015massive,larsson2014massive,bennis2018ultrareliable}。
+然而，远程医疗、无人驾驶和沉浸式虚拟现实等技术的蓬勃发展，对无线链路的速率、时延和能效等要求越来越高，使得现有技术的局限性逐渐显现出来，人们开始了对第六代移动通信技术（The Sixth Generation Mobile Communication Technology, 6G）的预研\cite{zhao20196g,zhang20196g,you20216g}。
 
 \begin{figure}[!htbp]
 	\centering
@@ -31,7 +31,7 @@
 
 然而，5G系统中广泛使用的技术已经不能很好地适应这些新需求。一方面，传统的mMIMO技术由有源相控阵实现，通过在基站侧和用户侧配置多根天线，可以带来信道容量的提升，且增益正比于天线数量\cite{asplund2020advanced,bjornson2016massive,yin2020addressing}。为实现6G中更高的频谱效率要求，所需的天线数量将剧烈增长，这不仅受到系统物理尺寸和复杂度的制约，大量的射频链路还会引起不可忽视的成本和功耗问题\cite{dohler2010cooperative}。另一方面，现有的蜂窝网络普遍受限于既定的物理传播环境，依靠更高的建站密度提升非视距（Non-Line-of-Sight, NLoS）覆盖，实现“全域覆盖”将进一步推高网络的建设和运营成本。在6G对高性能与低功耗双重要求的背景下，需要打破传统的通信架构，由“适应信道”的旧范式转变为“主动改变信道”的新设计范式，力求实现高效节能通信。
 
-因此，如何构建智能电磁环境成为6G技术演进的重要突破方向。可重构天线系统（Reconfigurable Antenna System, RAS）这一新型体系结构，能够主动调控电磁波的传播行为，实现“重构信道”，已经成为6G物理层系统架构中的重要研究方向之一。广义而言，RAS是指一类能够在相位响应、幅度响应或空间分布等维度实现动态调控的天线阵列或电磁表面，其核心目标是在尽量降低硬件复杂度的前提下，实现对电磁波传播路径和特性的主动控制，有效解决传统mMIMO技术在成本、能效与部署方面面临的挑战。根据系统部署位置及重构方式的不同，现有RAS相关研究可大致划分为三类具有代表性的技术路径：第一类为部署于发射端，用以取代或简化有源相控阵的动态超表面天线（Dynamic Metasurface Antenna, DMA）\cite{smith2017analysisa}；第二类为同样部署于发射端，但通过调整天线空间位置可实现大尺度信道重构的捏合天线系统（Pinching Antenna Systems, PASS）\cite{ding2025flexibleantenna}；第三类为部署在基站（Base Station, BS）与用户设备（User Equipment, UE）之间，用于构建视距链路（Line-of-Sight, LoS），改善覆盖条件的可重构智能表面（Reconfigurable Intelligent Surface, RIS）\cite{liu2021reconfigurable}。下文将对上述三类可重构天线技术的基本原理与典型特征进行简要介绍。
+因此，如何构建智能电磁环境成为6G技术演进的重要突破方向。可重构天线系统（Reconfigurable Antenna System, RAS）这一新型体系结构，能够主动调控电磁波的传播行为，实现“重构信道”，已经成为6G物理层系统架构中的重要研究方向之一。广义而言，RAS是指一类能够在相位响应、幅度响应或空间分布等维度实现动态调控的天线阵列或电磁表面，其核心目标是在尽量降低硬件复杂度的前提下，实现对电磁波传播路径和特性的主动控制，有效解决传统mMIMO技术在成本、能效与部署方面面临的挑战。根据系统部署位置及重构方式的不同，现有RAS相关研究可大致划分为三类具有代表性的技术路径：第一类为部署于发射端，用以取代或简化有源相控阵的动态超表面天线（Dynamic Metasurface Antenna, DMA）\cite{smith2017analysisa}；第二类为同样部署于发射端，但通过调整天线空间位置可实现大尺度信道重构的捏合天线系统（Pinching Antenna Systems, PASS）\cite{ding2025flexibleantenna}；第三类为部署在基站（Base Station, BS）与用户设备（User Equipment, UE）之间，用于构建视距链路（Line-of-Sight, LoS），改善覆盖条件的可重构智能表面（Reconfigurable Intelligent Surface, RIS）\cite{zhou2020jiyu,liu2021reconfigurable}。下文将对上述三类可重构天线技术的基本原理与典型特征进行简要介绍。
 
 其中，动态超表面天线侧重于基站侧的体系结构革新，不同于传统相控阵高度依赖射频链路或移相器网络进行相位调节，DMA通过在波导或谐振腔表面集成大量包含正-本征-负（Positive-Intrinsic-Negative, PIN）二极管、变容二极管等可调谐元件的超材料单元，实现对电磁波幅度和相位的直接调控。借助对单元谐振状态的独立控制，DMA能够显著减少天线阵列中射频链路的数量，从而降低硬件复杂度和系统功耗，为超大规模天线阵列的工程实现提供了可行路径。然而，这种以波导馈电和单元辐射为特征的结构形式，也使DMA的信号传输过程不可避免地受到波导传播效应及单元耦合特性的共同影响，其可实现的波束增益及性能边界有别于传统相控阵。因此，有必要从理论层面对DMA的波束赋形机制及其性能极限进行系统分析。
 
@@ -91,63 +91,21 @@
 
 其次是现有研究对离散相位约束的处理存在缺失和不足。现有的大多数波束赋形研究主要基于理想的连续相移假设，往往忽略了实际系统的离散相移限制。在实际的DMA硬件中，超材料阵元大多采用PIN二极管等器件进行状态切换，受单个单元集成器件数量和成本的限制，通常仅支持1至2比特的离散相移\cite{li2021programmable,deng2023reconfigurable,jabbar202460}。另一方面，即便采用变容二极管等理论上支持连续调相的设计，其相位分辨率仍会受限于数模转换器（Digital-to-Analog Converter, DAC）等外部电压控制电路的精度，导致相移状态依然是有限且离散的\cite{yang2023end}。此外，如图~\ref{fig:intro_DMA_couple}(b)所示，受限于谐振耦合辐射机制，单元的极化率轨迹无法闭合成完整的洛伦兹圆，导致实际系统常常面临相移能力受限或相移状态非均匀分布的问题。面对这些硬件约束，现有的少数离散波束赋形方案多采用先求解连续相位、再就近量化投影的策略\cite{zhang2025nearfield}。这种启发式方法在低精度量化条件下会引入较大的量化误差。对于包含数百上千阵元的DMA系统而言，传统的穷举搜索算法面临着计算复杂度过高的挑战，因此有必要探索适用于任意受限离散相移条件且具备多项式时间复杂度的波束赋形算法。
 
-最后，DMA系统闭式理论性能分析尚显匮乏。现有关于该系统通信性能的评估绝大多数依赖于特定参数下的数值仿真，缺乏严格的解析推导\cite{chen2024beamforming,kimaryo2023downlink}。与传统天线阵列不同，DMA系统的信号传输涉及波导内部的衰减、辐射单元的洛伦兹幅相耦合，以及离散量化带来的相位误差等多重物理过程。目前仅有少部分文献针对简化的场景推导了波束增益的渐近界限\cite{gavriilidis2025how}，
+最后，DMA系统闭式理论性能分析尚显匮乏。现有关于该系统通信性能的评估绝大多数依赖于特定参数下的数值仿真，缺乏严格的解析推导\cite{chen2024beamforming,kimaryo2023downlink}。与传统天线阵列不同，DMA系统的信号传输涉及波导内部的衰减、辐射单元的洛伦兹幅相耦合，以及离散量化带来的相位误差等多重物理过程。目前仅有少部分文献针对简化的场景推导了波束增益的渐近界限\cite{gavriilidis2025how}，并未涵盖各类非理想硬件特性。性能分析的缺失，导致在设计DMA系统时，难以根据所需达到的性能指标从数学层面确定波导数量、单元部署密度及量化精度等关键参数。因此，建立系统闭式性能分析理论，对于指导大规模DMA系统的参数设计与实际部署具有一定的工程意义。
 
+\subsection{捏合天线系统研究现状与挑战}
 
-
-\noindent\rule{\linewidth}{2pt}
-
-\noindent\rule{\linewidth}{2pt}
-
-
-在这些独特的复合机制下，学术界目前仍难以对系统可达到的理论性能边界进行清晰的数学刻画。仅有少部分文献针对极其简化的场景推导了波束增益的渐近界限\cite{gavriilidis2025how}，但尚未建立起涵盖各类非理想硬件特性（如洛伦兹幅相耦合、任意离散相位量化等）的完备分析框架。理论工具的缺位，导致在系统设计初期，难以从数学层面定量揭示波导数量、单元部署密度及量化精度等关键设计参数与平均信噪比、量化损失以及中断概率之间的非单调折中规律。因此，建立一套精确的闭式性能分析理论，对于指导大规模DMA系统的优化设计与实际部署具有重要的工程意义。
-
-\noindent\rule{\linewidth}{2pt}
-
-在这些复合约束下，系统能达到的理论上限究竟是多少，目前学术界仍缺乏清晰的数学刻画。仅有少部分文献针对极其简化的场景推导了增益的渐近界限，但尚未建立起涵盖波导衰减、洛伦兹耦合及任意离散量化等特性的完备理论分析框架。理论分析的缺位，使得在系统设计初期，难以从数学层面定量揭示波导数量、单元部署密度及量化精度等关键参数与系统平均信噪比、量化损失以及中断概率之间的内在非单调折中规律。因此，建立一套精确的闭式性能分析理论，对于指导大规模DMA系统的实际部署具有重要的工程指导意义。
-
-
-\noindent\rule{\linewidth}{2pt}
-
-
-
-针对DMA波导固有的能量衰减问题，相关理论推导填补了研究空白，直观且准确地评估了微带传播损耗与元件辐射损耗对近场波束深度及赋形增益的具体冲击\cite{gavriilidis2025how}。
-
-
-第三，\textbf{严密的闭式理论性能分析匮乏。}现有关于DMA通信系统性能的评估，绝大多数依赖于特定参数下的数值仿真。然而，DMA系统的信号传输机制极为独特，涉及波导内部的指数衰减、辐射单元间的相干与非相干叠加，以及离散量化误差等多重复杂物理机制。目前学术界仍然缺乏在上述复杂约束下，对系统平均信噪比（SNR）、量化损失的理论极限以及空间中断概率等核心性能指标的严格闭式解析表达。理论分析的缺位使得在系统设计初期，难以从数学层面定量揭示微带波导数量、单元部署密度及量化精度等关键系统参数与通信性能之间的内在非单调折中规律。
-
-
-\noindent\rule{\linewidth}{2pt}
-
-
-介绍性能分析现状 How do microstip loss
-
-介绍挑战
-
-\subsection{捏合天线系统研究现状}
-
-
-介绍第一次提出NTT DOCOMO
-
-介绍性能分析\cite{hou2026performance,hou2026performancea}，介绍波束赋形，介绍定位，介绍通感或者感知。
-
-介绍挑战
-
-\cite{liu2026pinchingantenna} - 综述
-
-
-Array gain for pinching-antenna systems (PASS)\cite{ouyang2025array}
-
-定位\cite{zhang2025pinchingantenna}
-
+与DMA侧重于在基站侧进行电磁调控不同，近年来学术界涌现出了另一类通过直接改变天线物理位置来重塑空间信道的新型架构。这类灵活天线系统的典型代表包括流体天线\cite{wong2021fluid,new2025tutorial}和可移动天线\cite{zhu2024movable,zhu2024modeling,ding2026movable}。通过在连续空间内动态寻找最优的辐射或接收位置，灵活天线系统能够有效规避空间深度衰落，获取波长尺度下的空间增益。然而，这些技术受限于机械结构或流体驱动机制，其移动范围通常局限于数个波长的局部区域，对大尺度路径损耗影响不大\cite{zhu2025movable}。在LoS链路被阻断的情况下，仅通过移动几个波长来调整天线位置通常不足以恢复LoS链路，难以实现米级的信道重构与宏观覆盖优化\cite{yang2026pinching}。
 
 \begin{figure}[!htbp]
 	\centering
 	\includegraphics[width=0.6\linewidth]{intro/intro_PASS.pdf}
-	\caption{使用捏合天线部署通信区域\cite{fukuda2022pinching}}
+	\caption{捏合天线系统示意图\cite{fukuda2022pinching}}
 	\label{fig:intro_PASS}
 \end{figure}
 
+在这一背景下，捏合天线系统已成为6G中一种有前景的灵活天线技术，其波导可延伸数十米，天线可以在多个候选位置被激活，用于信号的发射和接收\cite{liu2026pinchingantenna}。这使得PASS能够实现更大的可重构性，不仅能减轻小尺度衰落，也能缓解大尺度衰落，例如将PA放置在用户位置附近即可获得更好的通信性能\cite{liu2026pinchingantennaa}。PASS的首个原型机由日本NTT DOCOMO公司于2021年在巴塞罗那世界移动通信大会上演示\cite{fukuda2022pinching}。如图~\ref{fig:intro_PASS}所示，结构简单的PASS仅由介质波导和利用独立介质辐射无线电波现象所形成的捏合天线这两部分组成。PA允许根据需要选择夹持位置，这意味着无线电波可以从波导的任何位置辐射，形成图示的通信区域。当松开夹子时，这种辐射现象也会消失，因此无线电波辐射可以随时终止。
+图~\ref{fig:intro_PASS_demo}所示的视频传输实验展示了PASS的动态重构优势。在初始状态下捏合天线 PA 1 与接收机之间存在 LoS 链路，视频能同步传输；当引入屏蔽板阻挡该链路后，通信发生中断；此时，仅需在无遮挡的新位置安装捏合天线PA 2，即可迅速重建视距通信链路，从实验上验证了PASS在灵活规避空间遮挡方面的能力。
 
 \begin{figure}[!htbp]
 	\centering
@@ -156,7 +114,51 @@ Array gain for pinching-antenna systems (PASS)\cite{ouyang2025array}
 	\label{fig:intro_PASS_demo}
 \end{figure}
 
-\subsection{可重构智能表面研究现状}
+
+Modeling and beamforming optimization for pinching-antenna systems
+
+
+\noindent\rule{\linewidth}{2pt}
+
+\noindent\rule{\linewidth}{2pt}
+
+刘元玮综述
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+yang2026pinching杂志论文
+
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+\noindent\rule{\linewidth}{2pt}
+
+
+
+
+介绍性能分析\cite{hou2026performance,hou2026performancea}，介绍波束赋形，介绍定位，介绍通感或者感知。
+
+介绍挑战
+
+
+\cite{ding2025flexibleantenna}
+
+Array gain for pinching-antenna systems (PASS)\cite{ouyang2025array}
+
+定位\cite{zhang2025pinchingantenna}
+
+
+\cite{xu2025rate,xie2025lowcomplexity} - 波束赋形
+
+\cite{tyrovolas2026performance} - 性能分析、波束赋形、考虑波导损耗的最优位置
+
+\subsection{可重构智能表面研究现状与挑战}
 
 介绍基本概念第一次提出、崔铁军\cite{cui2014coding}和RFocus\cite{arun2020rfocus}
 
